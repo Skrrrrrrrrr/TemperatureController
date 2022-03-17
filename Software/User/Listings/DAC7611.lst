@@ -1,0 +1,73 @@
+C51 COMPILER V9.54   DAC7611                                                               03/12/2022 18:23:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE DAC7611
+OBJECT MODULE PLACED IN ..\Obj\DAC7611.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\PERIPHERAL\DAC7611.c LARGE OPTIMIZE(0,SPEE
+                    -D) BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\H
+                    -ardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;.
+                    -.\HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\DAC7611.lst) TABS(2) OBJECT(..\Obj\DAC7611.obj)
+
+line level    source
+
+   1          #include "DAC7611.h"
+   2          
+   3          void DAC(u16 dat)
+   4          {
+   5   1          u8 nCLK = 0;
+   6   1          DacLD = 1;
+   7   1          N_NOP(4);
+   8   1          DacCS = 0;
+   9   1          N_NOP(2);
+  10   1          // DacCLK = 0;
+  11   1          // N_NOP(4);
+  12   1          for (nCLK; nCLK < 12; nCLK++)
+  13   1          {
+  14   2              DacCLK = 0;
+  15   2              N_NOP(4);
+  16   2              if (dat & 0x800)
+  17   2              {
+  18   3                  DacSDI = 1;
+  19   3              }
+  20   2              else
+  21   2              {
+  22   3                  DacSDI = 0;
+  23   3              }
+  24   2              dat <<= 1;
+  25   2              N_NOP(1);
+  26   2              DacCLK = 1;
+  27   2              N_NOP(4);
+  28   2          }
+  29   1          DacCLK = 1;
+  30   1          N_NOP(4);
+  31   1          DacCS = 1;
+  32   1          N_NOP(4);
+  33   1          DacLD = 0;
+  34   1          N_NOP(16);
+  35   1          DacLD = 1;
+  36   1          N_NOP(16);
+  37   1          DacLD = 0;
+  38   1      }
+  39          void N_NOP(u16 n)
+  40          {
+  41   1          while (n--)
+  42   1          {
+  43   2              _nop_();
+  44   2          }
+  45   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    185    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      5    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.54   DAC7611                                                               03/12/2022 18:23:31 PAGE 2   
+
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

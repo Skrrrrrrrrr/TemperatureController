@@ -1,0 +1,45 @@
+C51 COMPILER V9.54   MYMATH                                                                03/12/2022 18:23:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MYMATH
+OBJECT MODULE PLACED IN ..\Obj\myMath.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\Sys\myMath.c LARGE OPTIMIZE(0,SPEED) BROWS
+                    -E INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Hardware\
+                    -PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\HARDWA
+                    -RE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\myMath.lst) TABS(2) OBJECT(..\Obj\myMath.obj)
+
+line level    source
+
+   1          #include "myMath.h"
+   2          
+   3          float Q_rsqrt(float number)
+   4          {
+   5   1          long i;
+   6   1          float x2, y;
+   7   1          const float threehalfs = 1.5F;
+   8   1      
+   9   1          x2 = number * 0.5F;
+  10   1          y = number;
+  11   1          i = *(long *)&y;
+  12   1          i = 0x5f375a86 - (i >> 1); //0x5f3759df By Lord Carmack
+  13   1          y = *(float *)&i;
+  14   1          y = y * (threehalfs - (x2 * y * y));
+  15   1          y = y * (threehalfs - (x2 * y * y));
+  16   1          y = y * (threehalfs - (x2 * y * y));
+  17   1      
+  18   1          return number * y;
+  19   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    477    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     20    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

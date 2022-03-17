@@ -1,0 +1,311 @@
+C51 COMPILER V9.54   AD7124_8                                                              03/12/2022 18:23:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE AD7124_8
+OBJECT MODULE PLACED IN ..\Obj\AD7124_8.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\PERIPHERAL\AD7124_8.c LARGE OPTIMIZE(0,SPE
+                    -ED) BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\
+                    -Hardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;
+                    -..\HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\AD7124_8.lst) TABS(2) OBJECT(..\Obj\AD7124_8.obj)
+
+line level    source
+
+   1          #include "AD7124_8.h"
+   2          
+   3          AD7124_REG code ad7124Regs[AD7124_REG_NO] = {
+   4              {0x00, 0x00, 1, 2},     /* AD7124_Status */
+   5              {0x01, 0x0000, 2, 1},   /* AD7124_ADC_Control */
+   6              {0x02, 0x0000, 3, 2},   /* AD7124_Data */
+   7              {0x03, 0x0000, 3, 1},   /* AD7124_IOCon1 */
+   8              {0x04, 0x0000, 2, 1},   /* AD7124_IOCon2 */
+   9              {0x05, 0x12, 1, 2},     /* AD7124_ID */
+  10              {0x06, 0x0000, 3, 2},   /* AD7124_Error */
+  11              {0x07, 0x0040, 3, 1},   /* AD7124_Error_En */
+  12              {0x08, 0x00, 1, 2},     /* AD7124_Mclk_Count */
+  13              {0x09, 0x8001, 2, 1},   /* AD7124_Channel_0 */
+  14              {0x0A, 0x0001, 2, 1},   /* AD7124_Channel_1 */
+  15              {0x0B, 0x0001, 2, 1},   /* AD7124_Channel_2 */
+  16              {0x0C, 0x0001, 2, 1},   /* AD7124_Channel_3 */
+  17              {0x0D, 0x0001, 2, 1},   /* AD7124_Channel_4 */
+  18              {0x0E, 0x0001, 2, 1},   /* AD7124_Channel_5 */
+  19              {0x0F, 0x0001, 2, 1},   /* AD7124_Channel_6 */
+  20              {0x10, 0x0001, 2, 1},   /* AD7124_Channel_7 */
+  21              {0x11, 0x0001, 2, 1},   /* AD7124_Channel_8 */
+  22              {0x12, 0x0001, 2, 1},   /* AD7124_Channel_9 */
+  23              {0x13, 0x0001, 2, 1},   /* AD7124_Channel_10 */
+  24              {0x14, 0x0001, 2, 1},   /* AD7124_Channel_11 */
+  25              {0x15, 0x0001, 2, 1},   /* AD7124_Channel_12 */
+  26              {0x16, 0x0001, 2, 1},   /* AD7124_Channel_13 */
+  27              {0x17, 0x0001, 2, 1},   /* AD7124_Channel_14 */
+  28              {0x18, 0x0001, 2, 1},   /* AD7124_Channel_15 */
+  29              {0x19, 0x0860, 2, 1},   /* AD7124_Config_0 */
+  30              {0x1A, 0x0860, 2, 1},   /* AD7124_Config_1 */
+  31              {0x1B, 0x0860, 2, 1},   /* AD7124_Config_2 */
+  32              {0x1C, 0x0860, 2, 1},   /* AD7124_Config_3 */
+  33              {0x1D, 0x0860, 2, 1},   /* AD7124_Config_4 */
+  34              {0x1E, 0x0860, 2, 1},   /* AD7124_Config_5 */
+  35              {0x1F, 0x0860, 2, 1},   /* AD7124_Config_6 */
+  36              {0x20, 0x0860, 2, 1},   /* AD7124_Config_7 */
+  37              {0x21, 0x060180, 3, 1}, /* AD7124_Filter_0 */
+  38              {0x22, 0x060180, 3, 1}, /* AD7124_Filter_1 */
+  39              {0x23, 0x060180, 3, 1}, /* AD7124_Filter_2 */
+  40              {0x24, 0x060180, 3, 1}, /* AD7124_Filter_3 */
+  41              {0x25, 0x060180, 3, 1}, /* AD7124_Filter_4 */
+  42              {0x26, 0x060180, 3, 1}, /* AD7124_Filter_5 */
+  43              {0x27, 0x060180, 3, 1}, /* AD7124_Filter_6 */
+  44              {0x28, 0x060180, 3, 1}, /* AD7124_Filter_7 */
+  45              {0x29, 0x800000, 3, 1}, /* AD7124_Offset_0 */
+  46              {0x2A, 0x800000, 3, 1}, /* AD7124_Offset_1 */
+  47              {0x2B, 0x800000, 3, 1}, /* AD7124_Offset_2 */
+  48              {0x2C, 0x800000, 3, 1}, /* AD7124_Offset_3 */
+  49              {0x2D, 0x800000, 3, 1}, /* AD7124_Offset_4 */
+  50              {0x2E, 0x800000, 3, 1}, /* AD7124_Offset_5 */
+  51              {0x2F, 0x800000, 3, 1}, /* AD7124_Offset_6 */
+  52              {0x30, 0x800000, 3, 1}, /* AD7124_Offset_7 */
+C51 COMPILER V9.54   AD7124_8                                                              03/12/2022 18:23:31 PAGE 2   
+
+  53              {0x31, 0x500000, 3, 1}, /* AD7124_Gain_0 */
+  54              {0x32, 0x500000, 3, 1}, /* AD7124_Gain_1 */
+  55              {0x33, 0x500000, 3, 1}, /* AD7124_Gain_2 */
+  56              {0x34, 0x500000, 3, 1}, /* AD7124_Gain_3 */
+  57              {0x35, 0x500000, 3, 1}, /* AD7124_Gain_4 */
+  58              {0x36, 0x500000, 3, 1}, /* AD7124_Gain_5 */
+  59              {0x37, 0x500000, 3, 1}, /* AD7124_Gain_6 */
+  60              {0x38, 0x500000, 3, 1}, /* AD7124_Gain_7 */
+  61          };
+  62          
+  63          Channel AD7124_8_ChannelPreConfig(u16 AD7124_Channel, u16 enable, u16 setup, u16 AINP, u16 AINM)
+  64          {
+  65   1          Channel chn;
+  66   1          chn.reg = (u8)AD7124_Channel & 0xff;
+  67   1          chn.enable = enable;
+  68   1          chn.setup = setup;
+  69   1          chn.AINP = AINP;
+  70   1          chn.AINM = AINM;
+  71   1      
+  72   1          return chn;
+  73   1      }
+  74          
+  75          Setup AD7124_8_SetupPreConfig(u8 configReg, u16 bipolar, u16 burnout, u8 ref_bufp, u8 ref_bufm, u8 ain_buf
+             -p, u8 ain_bufm, u8 ref_sel, u8 pga,
+  76                                        u8 filterReg, u8 filter, u8 rej60, u8 post_filter, u8 single_cycle, u16 fs,
+  77                                        u8 offsetReg, u32 offset,
+  78                                        u8 gainReg, u32 gain)
+  79          {
+  80   1          Setup st;
+  81   1      
+  82   1          st.configReg = configReg;
+  83   1          st.bipolar = bipolar;
+  84   1          st.burnout = burnout;
+  85   1          st.ref_bufp = ref_bufp;
+  86   1          st.ref_bufm = ref_bufm;
+  87   1          st.ain_bufp = ain_bufp;
+  88   1          st.ain_bufm = ain_bufm;
+  89   1          st.ref_sel = ref_sel;
+  90   1          st.pga = pga;
+  91   1          st.filterReg = filterReg;
+  92   1          st.filter = filter;
+  93   1          st.rej60 = rej60;
+  94   1          st.post_filter = post_filter;
+  95   1          st.single_cycle = single_cycle;
+  96   1          st.fs = fs;
+  97   1          st.offsetReg = offsetReg;
+  98   1          st.offset = offset;
+  99   1          st.gainReg = gainReg;
+ 100   1          st.gain = gain;
+ 101   1      
+ 102   1          return st;
+ 103   1      }
+ 104          
+ 105          AdcControl AD7124_8_AdcControlPreConfig(u8 control, u16 dout_rdy_del, u16 cont_read, u16 data_status, u16 
+             -cs_en, u16 ref_en, u8 power_mode, u8 mode, u8 clk_sel)
+ 106          {
+ 107   1          AdcControl adcControl;
+ 108   1      
+ 109   1          adcControl.control = control;
+ 110   1          adcControl.dout_rdy_del = dout_rdy_del;
+ 111   1          adcControl.cont_read = cont_read,
+ 112   1          adcControl.data_status = data_status;
+C51 COMPILER V9.54   AD7124_8                                                              03/12/2022 18:23:31 PAGE 3   
+
+ 113   1          adcControl.cs_en = cs_en;
+ 114   1          adcControl.ref_en = ref_en;
+ 115   1          adcControl.power_mode = power_mode;
+ 116   1          adcControl.mode = mode;
+ 117   1          adcControl.clk_sel = clk_sel;
+ 118   1      
+ 119   1          return adcControl;
+ 120   1      }
+ 121          
+ 122          Ad7124_8_IO AD7124_8_ioPreConfig(u8 gpio_dat, u8 gpio_ctrl, u16 pdsw, u16 gpio_iout, u8 gpio_iout_ch, u16 
+             -gpio_vbias)
+ 123          {
+ 124   1          Ad7124_8_IO ad7124_8_io;
+ 125   1          ad7124_8_io.gpio_dat = gpio_dat;
+ 126   1          ad7124_8_io.gpio_ctrl = gpio_ctrl;
+ 127   1          ad7124_8_io.pdsw = pdsw;
+ 128   1          ad7124_8_io.gpio_iout = gpio_iout;
+ 129   1          ad7124_8_io.gpio_iout_ch = gpio_iout_ch;
+ 130   1          ad7124_8_io.gpio_vbias = gpio_vbias;
+ 131   1      
+ 132   1          return ad7124_8_io;
+ 133   1      }
+ 134          
+ 135          void AD7124_8_init_SingleChannelConfiguraton(Channel channel)
+ 136          {
+ 137   1          spi_write_read(channel.reg);
+ 138   1          spi_write_read((channel.enable | channel.setup | channel.AINP) >> 8 & 0xff);
+ 139   1          spi_write_read(channel.AINP | channel.AINM);
+ 140   1          delay_X_ms(5);
+ 141   1      }
+ 142          
+ 143          //未配置gain和offset
+ 144          void AD7124_8_init_Setup(Setup setup)
+ 145          {
+ 146   1          spi_write_read(setup.configReg);
+ 147   1          spi_write_read((setup.bipolar | setup.burnout | setup.ref_bufp) >> 8 & 0xff);
+ 148   1          spi_write_read(setup.ref_bufm | setup.ain_bufp | setup.ain_bufm | setup.ref_sel | setup.pga);
+ 149   1          delay_X_ms(5);
+ 150   1          spi_write_read(setup.filterReg);
+ 151   1          spi_write_read(setup.filter | setup.rej60 | setup.post_filter | setup.single_cycle);
+ 152   1          spi_write_read(setup.fs >> 8 & 0x07);
+ 153   1          spi_write_read(setup.fs & 0xff);
+ 154   1          delay_X_ms(5);
+ 155   1      }
+ 156          // void AD7124_8_init_Diagnostics(Diagnostics diagnostics)
+ 157          // {
+ 158          // }
+ 159          void AD7124_8_init_AdcControl(AdcControl adcControl)
+ 160          {
+ 161   1          spi_write_read(adcControl.control);
+ 162   1          spi_write_read((adcControl.dout_rdy_del | adcControl.cont_read | adcControl.data_status | adcControl.c
+             -s_en | adcControl.ref_en) >> 8 & 0xff);
+ 163   1          spi_write_read(adcControl.power_mode | adcControl.mode | adcControl.clk_sel);
+ 164   1          delay_X_ms(5);
+ 165   1      }
+ 166          
+ 167          void Ad7124_8_init_io(Ad7124_8_IO ad7124_8_io)
+ 168          {
+ 169   1          spi_write_read(AD7124_COMM_REG_WR | AD7124_IO_CTRL1_REG);
+ 170   1          spi_write_read(ad7124_8_io.gpio_dat | ad7124_8_io.gpio_ctrl);
+ 171   1          spi_write_read((ad7124_8_io.pdsw | ad7124_8_io.gpio_iout) >> 8);
+ 172   1          spi_write_read(ad7124_8_io.gpio_iout_ch);
+C51 COMPILER V9.54   AD7124_8                                                              03/12/2022 18:23:31 PAGE 4   
+
+ 173   1          delay_X_ms(5);
+ 174   1          if (ad7124_8_io.gpio_vbias)
+ 175   1          {
+ 176   2              spi_write_read(AD7124_COMM_REG_WR | AD7124_IO_CTRL2_REG);
+ 177   2              spi_write_read(ad7124_8_io.gpio_vbias >> 8 & 0xff);
+ 178   2              spi_write_read(ad7124_8_io.gpio_vbias & 0xff);
+ 179   2          }
+ 180   1          delay_X_ms(5);
+ 181   1      }
+ 182          
+ 183          // void Ad7124_8_read(AD7124_REG reg);
+ 184          // void Ad7124_8_write(AD7124_REG reg);
+ 185          
+ 186          void ADC(AD7124_REG *pChnReg)
+ 187          {
+ 188   1      
+ 189   1          pChnReg->value &= 0x00000000; //uTemp为32位，只有3次右移，需要消除高位8bit
+ 190   1          spi_write_read(AD7124_COMM_REG_RD | AD7124_DATA_REG);
+ 191   1          pChnReg->value |= (u32)spi_write_read(0xff);
+ 192   1          pChnReg->value <<= 8;
+ 193   1          pChnReg->value |= (u32)spi_write_read(0xff);
+ 194   1          pChnReg->value <<= 8;
+ 195   1          pChnReg->value |= (u32)spi_write_read(0xff);
+ 196   1          // spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG);
+ 197   1          pChnReg->addr = spi_write_read(0xff);
+ 198   1      }
+ 199          
+ 200          // void ADCTrig(AD7124_REG *pChnReg)
+ 201          // {
+ 202          //     SPISS = 0;
+ 203          //     pChnReg->value &= 0x00000000; //uTemp为32位，只有3次右移，需要消除高位8bit
+ 204          //                                   // spi_write_read(pChnReg->rw | pChnReg->addr);
+ 205          
+ 206          //     // EX1 = 1; //INT1中断开
+ 207          //     psw2_st = P_SW2;
+ 208          //     P_SW2 |= 0x80;
+ 209          //     P1INTE = 0x01;
+ 210          //     P_SW2 = psw2_st;
+ 211          // }
+ 212          
+ 213          // void ADCCalibrate(Setup * Setup)
+ 214          // {
+ 215          //     void InternalFullScaleCalibrate(Setup * Setup);
+ 216          //     void InternalZeroScaleCalibrate(Setup * Setup);
+ 217          //     void SystemZeroScaleCalibrate(void);
+ 218          //     void SystemFullScaleCalibrate(void);
+ 219          // }
+ 220          
+ 221          void InternalFullScaleCalibrate(Setup *setup)
+ 222          {
+ 223   1      
+ 224   1          //校准前写入失调寄存器0x800000，保障校准精度
+ 225   1          spi_write_read(AD7124_COMM_REG_WR | (setup->offsetReg));
+ 226   1          spi_write_read(0x80);
+ 227   1          spi_write_read(0x00);
+ 228   1          spi_write_read(0x00);
+ 229   1          //较低的输出速率获得较高的失调校准精度，此精度一次校准，多速率共用
+ 230   1          spi_write_read(AD7124_COMM_REG_WR | setup->filterReg);
+ 231   1          spi_write_read(0x06); //默认值
+ 232   1          spi_write_read(0x00); //低速率输出
+ 233   1          spi_write_read(0x01); //低速率输出
+ 234   1      
+C51 COMPILER V9.54   AD7124_8                                                              03/12/2022 18:23:31 PAGE 5   
+
+ 235   1          //启动校准:内部满量程校准需在非全功率模式，其他校准随意
+ 236   1          spi_write_read(AD7124_COMM_REG_WR | AD7124_ADC_CTRL_REG);
+ 237   1          spi_write_read(0x10);
+ 238   1          spi_write_read(AD7124_ADC_CTRL_REG_POWER_MODE(1) | AD7124_ADC_CTRL_REG_MODE(6));
+ 239   1          delay_X_ms(100);
+ 240   1          // delay_X_ms(1600); //增益大于1时，为4个滤波器建立时间
+ 241   1          while (DOUT)
+ 242   1              ;
+ 243   1          //获得校准参数
+ 244   1          spi_write_read(AD7124_COMM_REG_RD | setup->gainReg);
+ 245   1          // delay_X_ms(1);
+ 246   1          setup->gain = spi_write_read(0xff);
+ 247   1          setup->gain <<= 8;
+ 248   1          setup->gain |= spi_write_read(0xff);
+ 249   1          setup->gain <<= 8;
+ 250   1          setup->gain |= spi_write_read(0xff);
+ 251   1          delay_X_ms(1);
+ 252   1      }
+ 253          
+ 254          void InternalZeroScaleCalibrate(Setup *setup)
+ 255          {
+ 256   1          // 启动校准
+ 257   1          spi_write_read(AD7124_COMM_REG_WR | AD7124_ADC_CTRL_REG);
+ 258   1          spi_write_read(0x10);
+ 259   1          spi_write_read(AD7124_ADC_CTRL_REG_POWER_MODE(1) | AD7124_ADC_CTRL_REG_MODE(5));
+ 260   1          delay_X_ms(100);
+ 261   1          while (DOUT)
+ 262   1              ;
+ 263   1      
+ 264   1          //获得校准参数
+ 265   1          spi_write_read(AD7124_COMM_REG_RD | setup->offsetReg);
+ 266   1          delay_X_ms(1);
+ 267   1          setup->offset = spi_write_read(0xff);
+ 268   1          setup->offset <<= 8;
+ 269   1          setup->offset |= spi_write_read(0xff);
+ 270   1          setup->offset <<= 8;
+ 271   1          setup->offset |= spi_write_read(0xff);
+ 272   1          delay_X_ms(1);
+ 273   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2205    ----
+   CONSTANT SIZE    =    399    ----
+   XDATA SIZE       =    190    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

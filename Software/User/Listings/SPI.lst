@@ -1,0 +1,87 @@
+C51 COMPILER V9.54   SPI                                                                   03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE SPI
+OBJECT MODULE PLACED IN ..\Obj\SPI.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\Hardware\SPI\SPI.c LARGE OPTIMIZE(0,SPEED)
+                    - BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Har
+                    -dware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\
+                    -HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\SPI.lst) TABS(2) OBJECT(..\Obj\SPI.obj)
+
+line level    source
+
+   1          #include "SPI.h"
+   2          
+   3          void SpiInit()
+   4          {
+   5   1          SPDAT = 0;            //initial SPI data
+   6   1          SPSTAT = SPIF | WCOL; //clear SPI status
+   7   1      #ifdef MASTER
+   8   1          SPCTL = SSIG | SPEN | MSTR;  //master mode
+   9   1          SPCTL = SPCTL | CPHA | CPOL; //
+  10   1          SPCTL = SPCTL | SPDL;        //SPI BAUD
+  11   1      #else
+                  SPCTL = SPEN; //slave mode
+              #endif
+  14   1          // SPCTL |= (1 << 7);                   //忽略 SS 引脚功能，使用 MSTR 确定器件是主机�
+             -�是从机
+  15   1          // SPCTL |= (1 << 6);                   //使能 SPI 功能
+  16   1          // SPCTL &= ~(1 << 5);                  //先发送/接收数据的高位（ MSB）
+  17   1          P_SW1 |= SPI_IO_P35P34P33P32; //IO口切换. 0: P1.2/P5.4 P1.3 P1.4 P1.5, 1: P2.2 P2.3 P2.4 P2.5, 2: P
+             -5.4 P4.0 P4.1 P4.3, 3: P3.5 P3.4 P3.3 P3.2
+  18   1      
+  19   1          // SPCTL = 0xdc;
+  20   1          // SPSTAT = 0xc0;
+  21   1          // // IE2 |= ESPI;
+  22   1          // P_SW1 |= SPI_IO_P35P34P33P32;
+  23   1          // SPSTAT = SPIF + WCOL; //清0 SPIF和WCOL标志
+  24   1      }
+  25          
+  26          ///////////////////////////////////////////////////////////
+  27          //查询方式
+  28          u8 spi_write_read(u8 dat)
+  29          {
+  30   1          // #ifdef MASTER
+  31   1          //     SPISS = 0; //pull low slave SS
+  32   1          // #endif
+  33   1          SPDAT = dat; //trigger SPI send
+  34   1          while (!(SPSTAT & SPIF))
+  35   1              ;                 //wait send complete
+  36   1          SPSTAT = SPIF | WCOL; //clear SPI status
+  37   1          // #ifdef MASTER
+  38   1          //     SPISS = 1; //push high slave SS
+  39   1          // #endif
+  40   1          return SPDAT; //return received SPI data
+  41   1      }
+  42          
+  43          // u16 spi_write_read_u16(u16 dat)
+  44          // {
+  45          //     u16 ret;
+  46          //     ret = SPISwap(dat & 0xff);
+  47          //     ret << 8;
+  48          //     ret |= SPISwap(dat >> 8 & 0xff);
+  49          
+  50          //     return ret;
+C51 COMPILER V9.54   SPI                                                                   03/12/2022 18:23:30 PAGE 2   
+
+  51          // }
+  52          
+  53          // 中断方式
+  54          // void spi_isr() interrupt 9
+  55          // {
+  56          //     SPSTAT = SPIF | WCOL; //clear SPI status
+  57          // }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     42    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      1    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

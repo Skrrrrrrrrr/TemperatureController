@@ -1,0 +1,50 @@
+C51 COMPILER V9.54   KALMANFILTER                                                          03/12/2022 18:23:29 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE KALMANFILTER
+OBJECT MODULE PLACED IN ..\Obj\KalmanFilter.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE KalmanFilter.c LARGE OPTIMIZE(0,SPEED) BROWSE
+                    - INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Hardware\P
+                    -IT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\HARDWAR
+                    -E\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\KalmanFilter.lst) TABS(2) OBJECT(..\Obj\KalmanFilter.obj)
+
+line level    source
+
+   1          #include "KalmanFilter.h"
+   2          
+   3          KFP code _InitialKFP = {0.02, 0, 0, 0, 0.5, 0.543};
+   4          
+   5          /**
+   6           *¿¨¶ûÂüÂË²¨Æ÷
+   7           *@param KFP *kfp ¿¨¶ûÂü½á¹¹Ìå²ÎÊý
+   8           *   float input ÐèÒªÂË²¨µÄ²ÎÊýµÄ²âÁ¿Öµ£¨¼´´«¸ÐÆ÷µÄ²É¼¯Öµ£©
+   9           *@return ÂË²¨ºóµÄ²ÎÊý£¨×îÓÅÖµ£©
+  10           */
+  11          
+  12          float kalmanFilter(KFP *kfp, float input)
+  13          {
+  14   1          //Ô¤²âÐ­·½²î·½³Ì£ºkÊ±¿ÌÏµÍ³¹ÀËãÐ­·½²î = k-1Ê±¿ÌµÄÏµÍ³Ð­·½²î + ¹ý³ÌÔëÉùÐ­·½²î
+  15   1          kfp->Now_P = kfp->LastP + kfp->Q;
+  16   1          //¿¨¶ûÂüÔöÒæ·½³Ì£º¿¨¶ûÂüÔöÒæ = kÊ±¿ÌÏµÍ³¹ÀËãÐ­·½²î / £¨kÊ±¿ÌÏµÍ³¹ÀËãÐ­·½²î + ¹Û²âÔëÉùÐ­·½²î£©
+  17   1          kfp->Kg = kfp->Now_P / (kfp->Now_P + kfp->R);
+  18   1          //¸üÐÂ×îÓÅÖµ·½³Ì£ºkÊ±¿Ì×´Ì¬±äÁ¿µÄ×îÓÅÖµ = ×´Ì¬±äÁ¿µÄÔ¤²âÖµ + ¿¨¶ûÂüÔöÒæ * £¨²âÁ¿Öµ - ×´Ì¬±äÁ¿µÄÔ¤²âÖµ£
+             -©
+  19   1          kfp->out = kfp->out + kfp->Kg * (input - kfp->out); //ÒòÎªÕâÒ»´ÎµÄÔ¤²âÖµ¾ÍÊÇÉÏÒ»´ÎµÄÊä³öÖµ
+  20   1          //¸üÐÂÐ­·½²î·½³Ì: ±¾´ÎµÄÏµÍ³Ð­·½²î¸¶¸ø kfp->LastP ÍþÏÂÒ»´ÎÔËËã×¼±¸¡£
+  21   1          kfp->LastP = (1 - kfp->Kg) * kfp->Now_P;
+  22   1          return kfp->out;
+  23   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    389    ----
+   CONSTANT SIZE    =     24    ----
+   XDATA SIZE       =      7    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,220 @@
+C51 COMPILER V9.54   UART                                                                  03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN ..\Obj\UART.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\Hardware\UART\UART.c LARGE OPTIMIZE(0,SPEE
+                    -D) BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\H
+                    -ardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;.
+                    -.\HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\UART.lst) TABS(2) OBJECT(..\Obj\UART.obj)
+
+line level    source
+
+   1          #include "UART.h"
+   2          
+   3          u8 wptr = 0;
+   4          u8 rxBuffer[MAXMODBUSDATALENGTH] = 0;
+   5          u8 *pRxBuffer = rxBuffer;
+   6          bool tx1Busy = false; //发送完毕标志
+   7          u8 txTimeout = 0xff;
+   8          DataStateEnum dataState = IS_ADDR;
+   9          
+  10          void UARTInit(u8 UARTx, u8 Timer, u8 serialport, bool enable)
+  11          {
+  12   1        switch (UARTx)
+  13   1        {
+  14   2        case UART(1):      //串口1
+  15   2          P_SW1 |= serialport; //串口1引脚切换到 P30.P31
+  16   2          SCON = 0x50;     //串口1工作模式为0，8位数据模式
+  17   2          switch (Timer)
+  18   2          {
+  19   3          case Timer(1):
+  20   3            AUXR &= 0xFE; //串口1选择定时器1作为波特率发生器
+  21   3            break;
+  22   3          case Timer(2):
+  23   3            AUXR &= 0xFF; //串口1选择定时器2作为波特率发生器
+  24   3            break;
+  25   3          default:
+  26   3            break;
+  27   3          }
+  28   2      
+  29   2          // Timer1_init(DISABLE, baud, 0x00, true, DISABLE);
+  30   2      
+  31   2          if (enable)
+  32   2          {
+  33   3            ES = 1;
+  34   3          } //使能串口1中断
+  35   2          break;
+  36   2        case UART(2):
+  37   2          P_SW2 |= serialport; //串口2引脚切换到 P40.P42
+  38   2          switch (Timer)
+  39   2          {
+  40   3          case Timer(2):
+  41   3            S2CON = 0x10; //串口2选择定时器2作为波特率发生器
+  42   3            break;
+  43   3          default:
+  44   3            break;
+  45   3          }
+  46   2      
+  47   2          if (enable)
+  48   2          {
+  49   3            // IE2 |= ES2;
+  50   3            UART2_INT_ENABLE();
+  51   3          } //使能串口2中断
+  52   2          break;
+C51 COMPILER V9.54   UART                                                                  03/12/2022 18:23:30 PAGE 2   
+
+  53   2        case UART(3):
+  54   2          P_SW2 |= serialport; //串口3引脚切换到 P50.P51
+  55   2          switch (Timer)
+  56   2          {
+  57   3          case Timer(3):
+  58   3            S3CON = 0x50; //串口3选择定时器3作为波特率发生器
+  59   3            break;
+  60   3          case Timer(2):
+  61   3            S3CON = 0x10; //串口3选择定时器2作为波特率发生器
+  62   3            break;
+  63   3          default:
+  64   3            break;
+  65   3          }
+  66   2          T4T3M |= 0x0a; //启动定时器3，1T模式
+  67   2          if (enable == 1)
+  68   2          {
+  69   3            // IE2 |= ES3;
+  70   3            UART3_INT_ENABLE();
+  71   3          } //使能串口3中断
+  72   2          break;
+  73   2        case UART(4):
+  74   2          P_SW2 |= serialport; //串口4引脚切换到 P52.P53
+  75   2          switch (Timer)
+  76   2          {
+  77   3          case Timer(4):
+  78   3            S4CON = 0x50; //串口4选择定时器4作为波特率发生器
+  79   3            break;
+  80   3          case Timer(2):
+  81   3            S4CON = 0x10; //串口3选择定时器2作为波特率发生器
+  82   3            break;
+  83   3          default:
+  84   3            break;
+  85   3          }
+  86   2          T4T3M |= 0xa0; //启动定时器4，1T模式
+  87   2          if (enable == 1)
+  88   2          {
+  89   3            // IE2 |= ES4;
+  90   3            UART4_INT_ENABLE();
+  91   3          } //使能串口4中断
+  92   2          break;
+  93   2        default:
+  94   2          break;
+  95   2        }
+  96   1        // EA = 1; //允许所有中断
+  97   1      }
+  98          
+  99          void UARTSendByte(int UARTx, u8 c) //调用串口模块发送单个字符
+ 100          {
+ 101   1        if (UARTx == 1)
+ 102   1        {
+ 103   2          // TI = 0;
+ 104   2          SBUF = c;
+ 105   2          while (!TI)
+ 106   2            ;
+ 107   2        }
+ 108   1        if (UARTx == 2)
+ 109   1        {
+ 110   2          S2CON &= ~0x02;
+ 111   2          S2BUF = c;
+ 112   2          while (!(S2CON & 0x02))
+ 113   2            ;
+ 114   2        }
+C51 COMPILER V9.54   UART                                                                  03/12/2022 18:23:30 PAGE 3   
+
+ 115   1        if (UARTx == 3)
+ 116   1        {
+ 117   2          S3CON &= ~0x02;
+ 118   2          S3BUF = c;
+ 119   2          while (!(S3CON & 0x02))
+ 120   2            ;
+ 121   2        }
+ 122   1        if (UARTx == 4)
+ 123   1        {
+ 124   2          S4CON &= ~0x02;
+ 125   2          S4BUF = c;
+ 126   2          while (!(S4CON & 0x02))
+ 127   2            ;
+ 128   2        }
+ 129   1      }
+ 130          
+ 131          void UARTSendString(int UARTx, u8 *pt, u8 len) //调用串口模块发送字符串
+ 132          {
+ 133   1        while (len-- > 0)
+ 134   1        {
+ 135   2          UARTSendByte(UARTx, *pt++);
+ 136   2        }
+ 137   1      }
+ 138          
+ 139          void UART1Isr(void) interrupt UART1_VECTOR
+ 140          {
+ 141   1        if (TI)
+ 142   1        {
+ 143   2          TI = 0;
+ 144   2          tx1Busy = false;
+ 145   2          // spi_write_read(SBUF);
+ 146   2        }
+ 147   1        else if (RI)
+ 148   1        {
+ 149   2          RI = 0;
+ 150   2          switch (dataState)
+ 151   2          {
+ 152   3          case IS_IDLE:
+ 153   3            modbusDataGapCnt = 0;
+ 154   3            break;
+ 155   3          case IS_ADDR:
+ 156   3            modbusDataGapCnt = 0;
+ 157   3            Timer3_start();
+ 158   3            if (SBUF == 0 || SBUF == localAddr)
+ 159   3            {
+ 160   4              dataState = IS_VALID;
+ 161   4              *pRxBuffer = SBUF;
+ 162   4              pRxBuffer++;
+ 163   4              wptr++;
+ 164   4            }
+ 165   3            else
+ 166   3            {
+ 167   4              dataState = IS_IDLE;
+ 168   4              if (wptr)
+ 169   4              {
+ 170   5                pRxBuffer = rxBuffer;
+ 171   5                memset(pRxBuffer, 0, wptr);
+ 172   5                wptr = 0;
+ 173   5              }
+ 174   4            }
+ 175   3            break;
+ 176   3          case IS_VALID:
+C51 COMPILER V9.54   UART                                                                  03/12/2022 18:23:30 PAGE 4   
+
+ 177   3            modbusDataGapCnt = 0;
+ 178   3            *pRxBuffer = SBUF;
+ 179   3            pRxBuffer++;
+ 180   3            wptr++;
+ 181   3            break;
+ 182   3          default:
+ 183   3            Timer3_stop();
+ 184   3            dataState = IS_IDLE;
+ 185   3            break;
+ 186   3          }
+ 187   2        }
+ 188   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    684    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    274    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

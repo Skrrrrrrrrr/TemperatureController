@@ -1,0 +1,191 @@
+C51 COMPILER V9.54   INT                                                                   03/12/2022 18:23:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE INT
+OBJECT MODULE PLACED IN ..\Obj\INT.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\HARDWARE\INT\INT.c LARGE OPTIMIZE(0,SPEED)
+                    - BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Har
+                    -dware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\
+                    -HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\INT.lst) TABS(2) OBJECT(..\Obj\INT.obj)
+
+line level    source
+
+   1          /**********************************************************
+   2              不建议更改此文档，相关函数功能请查看相关头文件定义
+   3          **********************************************************/
+   4          #include "INT.h"
+   5          
+   6          u8 psw2_st;
+   7          extern AD7124_REG *pChnReg; //数据指针
+   8          extern KFP *pKfp;
+   9          extern float fRes[MAXAD7124CHNS];
+  10          extern float fKpfTemp;
+  11          extern int fTemp;
+  12          extern int chnValues[MAXAD7124CHNS]; //存储通道转换后的温度值，10倍放大（BipolarDivisor）
+  13          extern Setup setup[MAXAD7124SETUPS];
+  14          extern bool adcAvailable;
+  15          
+  16          void INT_init(int n, int mode)
+  17          {
+  18   1        switch (n)
+  19   1        {
+  20   2        case 0:
+  21   2        {
+  22   3          if (mode == 0)
+  23   3          {
+  24   4            IT0 = 1;
+  25   4            EX0 = 1;
+  26   4          }
+  27   3          else
+  28   3          {
+  29   4            IT0 = 0;
+  30   4            EX0 = 1;
+  31   4          }
+  32   3          break;
+  33   3        }
+  34   2        case 1:
+  35   2        {
+  36   3          if (mode == 0)
+  37   3          {
+  38   4            IT1 = 1;
+  39   4            EX1 = 1;
+  40   4          }
+  41   3          else
+  42   3          {
+  43   4            IT1 = 0;
+  44   4            EX1 = 1;
+  45   4          }
+  46   3          break;
+  47   3        }
+  48   2        case 2:
+  49   2        {
+  50   3          INT_CLKO |= EX2;
+  51   3          break;
+  52   3        }
+C51 COMPILER V9.54   INT                                                                   03/12/2022 18:23:31 PAGE 2   
+
+  53   2        case 3:
+  54   2        {
+  55   3          INT_CLKO |= EX3;
+  56   3          break;
+  57   3        }
+  58   2        case 4:
+  59   2        {
+  60   3          INT_CLKO |= EX4;
+  61   3          break;
+  62   3        }
+  63   2        }
+  64   1        // EA=1;            //允许所有中断
+  65   1      }
+  66          
+  67          void int1_isr() interrupt INT1_VECTOR
+  68          {
+  69   1        EX1 = 0; //INT1中断关
+  70   1        // IT1 = 0; //关使能下降沿
+  71   1        IE1 = 0; //清INT1标志位
+  72   1             // // P16 = ~P16;
+  73   1             // P10 = 0;
+  74   1             // N_NOP(5);
+  75   1             // P10 = 1;
+  76   1             // N_NOP(5);
+  77   1             // P10 = 0;
+  78   1             // delay_X_us(1);
+  79   1      
+  80   1        adcAvailable = true;
+  81   1        timer4Cnt = 0;
+  82   1        // EX1 = 1; //INT1中断开
+  83   1      }
+  84          
+  85          // void int3_isr() interrupt INT3_VECTOR
+  86          // {
+  87          //  P10 = ~P10;
+  88          // }
+  89          
+  90          // void common_isr() interrupt COMMON_VECTOR
+  91          // {
+  92          //  u8 intf;
+  93          
+  94          //  // SPISS = 0;
+  95          //  psw2_st = P_SW2;
+  96          //  P_SW2 |= 0x80;
+  97          //  intf = P1INTF;
+  98          //  P1INTE = 0x00;
+  99          
+ 100          //  if (intf)
+ 101          //  {
+ 102          //    P1INTF = 0x00;
+ 103          //    if (intf & 0x01) //P1.0口中断
+ 104          //    {
+ 105          //      P16 = ~P16;
+ 106          //      // pChnReg->value &= 0x00000000; //uTemp为32位，只有3次右移，需要消除高位8bit
+ 107          //      // SpiWrite&Read(AD7124_COMM_REG_RD | AD7124_DATA_REG);
+ 108          //      // pChnReg->value |= (u32)SpiWrite&Read(0x00);
+ 109          //      // pChnReg->value <<= 8;
+ 110          //      // pChnReg->value |= (u32)SpiWrite&Read(0x00);
+ 111          //      // pChnReg->value <<= 8;
+ 112          //      // pChnReg->value |= (u32)SpiWrite&Read(0x00);
+ 113          //      // // SpiWrite&Read(AD7124_COMM_REG_RD | AD7124_COMM_REG);
+ 114          //      // pChnReg->addr = SpiWrite&Read(0x00);
+C51 COMPILER V9.54   INT                                                                   03/12/2022 18:23:31 PAGE 3   
+
+ 115          //      // // SPISS = 1;
+ 116          
+ 117          //      // if (pChnReg->addr <= MAXAD7124CHNS)
+ 118          //      // {
+ 119          //      //  fRes[pChnReg->addr] = (float)((pChnReg->value - 0x800000) >> setup[pChnReg->addr].pga) * Bipolar
+             -Divisor; ////换算后单位为Ω，跑完需要55us
+ 120          //      //  // fRes[pChnReg->addr] = (float)((pChnReg->value - 0x800000) >> setup[pChnReg->addr].pga) * 2127
+             - * BipolarDivisor; //阻值未转化为温度，跑完需要55us，
+ 121          //      //  fKpfTemp = kalmanFilter(pKfp + pChnReg->addr, fRes[pChnReg->addr]);
+ 122          //      //  if (fRes >= 100)
+ 123          //      //  {
+ 124          //      //    fTemp = 10 * Res2Temp_Pt100_ResLagrgerThan100(fKpfTemp); //BipolarDivisor为e-13，需要800us
+ 125          //      //  }
+ 126          //      //  else
+ 127          //      //  {
+ 128          //      //    fTemp = 10 * Res2Temp_Pt100_ResLessThan100(fKpfTemp); //BipolarDivisor为e-13，需要800us
+ 129          //      //  }
+ 130          //      //  chnValues[pChnReg->addr] = (int)(fTemp); //5us
+ 131          //      // }
+ 132          //      // // adcAvailable = true;
+ 133          //    }
+ 134          //    if (intf & 0x02) //P1.0口中断
+ 135          //    {
+ 136          //    }
+ 137          //    if (intf & 0x04) //P1.0口中断
+ 138          //    {
+ 139          //    }
+ 140          //    if (intf & 0x08) //P1.0口中断
+ 141          //    {
+ 142          //    }
+ 143          //    if (intf & 0x10) //P1.0口中断
+ 144          //    {
+ 145          //    }
+ 146          //    if (intf & 0x20) //P1.0口中断
+ 147          //    {
+ 148          //    }
+ 149          //    if (intf & 0x40) //P1.0口中断
+ 150          //    {
+ 151          //    }
+ 152          //    if (intf & 0x80) //P1.0口中断
+ 153          //    {
+ 154          //    }
+ 155          //  }
+ 156          //  P1INTE = 0x00;
+ 157          //  P_SW2 = psw2_st;
+ 158          //  // SPISS = 1;
+ 159          // }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    137    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      5    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

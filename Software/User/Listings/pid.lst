@@ -1,0 +1,87 @@
+C51 COMPILER V9.54   PID                                                                   01/22/2022 15:52:41 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE PID
+OBJECT MODULE PLACED IN ..\Obj\pid.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE pid.c LARGE OPTIMIZE(0,SPEED) BROWSE INCDIR(.
+                    -.\Hardware;..\Peripheral;..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\
+                    -PCA;..\Hardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI) DEBUG OBJE
+                    -CTEXTEND PRINT(.\Listings\pid.lst) TABS(2) OBJECT(..\Obj\pid.obj)
+
+line level    source
+
+   1          
+   2          #include "pid.h"
+   3          
+   4          /*
+   5          //增量式PID
+   6          typedef struct{
+   7            int SetPoint;   //目标值
+   8            long SumError;    //误差累计
+   9            
+  10            float P;      //比例常数
+  11            float I;      //积分常数
+  12            float D;      //微分常数
+  13            
+  14            int LastError;    //上次偏差值
+  15            int PrevError;    //上上次偏差值
+  16          }PID;
+  17          */
+  18           
+  19          /*************************************************
+  20           *函数名称:void PID_Arg_Init(PID* sptr)                              
+  21           *功    能:参数初始化                                     
+  22           *参    数:PID* sptr                                     
+  23           *返 回 值:void                                       
+  24           *************************************************/
+  25          void PID_Arg_Init(PID* sptr)
+  26          {
+  27   1        sptr->SumError = 0;         //误差累计 
+  28   1        sptr->LastError = 0;        //上次偏差值
+  29   1        sptr->PrevError = 0;        //上上次偏差值
+  30   1                                    
+  31   1        sptr->P = 0;                //比例常数
+  32   1        sptr->I = 0;                //积分常数
+  33   1        sptr->D = 0;                //微分常数
+  34   1                                    
+  35   1        sptr->SetPoint = 0;     //目标值
+  36   1      }
+  37          /*************************************************
+  38           *函数名称:int PID_Contrl(PID* sptr,int NextPoint)                             
+  39           *功    能:PID控制                                   
+  40           *参    数:PID* sptr：上次参数  int NextPoint：当前实际值                                   
+  41           *返 回 值:void                                       
+  42           *************************************************/
+  43          int PID_Contrl(PID* sptr,int NextPoint)
+  44          {
+  45   1        register int iError,iIncPid;
+  46   1        
+  47   1        iError = sptr->SetPoint - NextPoint;  //当前误差  设定的目标值和实际值的偏差
+  48   1        
+  49   1        iIncPid = sptr->P * iError        //增量计算
+  50   1              - sptr->I * sptr->LastError
+  51   1              + sptr->D * sptr->PrevError;
+  52   1        
+C51 COMPILER V9.54   PID                                                                   01/22/2022 15:52:41 PAGE 2   
+
+  53   1        /*存储误差  用于下次计算*/
+  54   1        sptr->PrevError = sptr->LastError;
+  55   1        sptr->LastError = iError;
+  56   1        
+  57   1        return iIncPid;             //返回增量值
+  58   1      }
+  59          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    535    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     12    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

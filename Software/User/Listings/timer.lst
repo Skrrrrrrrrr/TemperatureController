@@ -1,0 +1,299 @@
+C51 COMPILER V9.54   TIMER                                                                 03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TIMER
+OBJECT MODULE PLACED IN ..\Obj\timer.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\HARDWARE\TIMER\timer.c LARGE OPTIMIZE(0,SP
+                    -EED) BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..
+                    -\Hardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI
+                    -;..\HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\timer.lst) TABS(2) OBJECT(..\Obj\timer.obj)
+
+line level    source
+
+   1          #include "timer.h"
+   2          
+   3          /***************************************************************/
+   4          //初始化的initValue为通讯波特率
+   5          /***************************************************************/
+   6          
+   7          u16 timer2Cnt = 0;
+   8          u16 timer4Cnt = 0;
+   9          
+  10          extern u8 wptr;
+  11          u8 *pWptr = &wptr;
+  12          extern SqQueue sq;
+  13          extern SqQueue nDataCntSq;
+  14          extern DataStateEnum dataState;
+  15          extern u8 rxBuffer[MAXMODBUSDATALENGTH];
+  16          extern u8 *pRxBuffer;
+  17          
+  18          // void Timer0_init(bool irtEn, u32 initValue, u8 TMode, bool T0_1T, bool clkoutEn)
+  19          // {
+  20          //     TR0 = 0; //停止计数
+  21          
+  22          //     ET0 = irtEn;
+  23          
+  24          //     TMOD |= TMode;
+  25          //     AUXR |= ((u8)T0_1T) << 6;                  //T12_1=0,12T;T12_1=1,1T
+  26          //     TL0 = (65536 - Main_Fosc / initValue / 4); //定时器1装初值
+  27          //     TH0 = (65536 - Main_Fosc / initValue / 4) >> 8;
+  28          
+  29          //     if (clkoutEn)
+  30          //     {
+  31          //         INT_CLKO |= 0x01; //输出时钟
+  32          //     }
+  33          //     else
+  34          //     {
+  35          //         INT_CLKO &= 0xfe; //不输出时钟
+  36          //     }
+  37          //     TR0 = 1; //使能计数
+  38          // }
+  39          
+  40          void Timer1_init(bool irtEn, u32 initValue, u8 TMode, bool T1_1T, bool clkoutEn)
+  41          {
+  42   1          TR1 = 0; //停止计数
+  43   1      
+  44   1          ET1 = irtEn;
+  45   1      
+  46   1          TMOD |= TMode;
+  47   1          AUXR |= ((u8)T1_1T) << 6;                  //T12_1=0,12T;T12_1=1,1T
+  48   1          TL1 = (65536 - Main_Fosc / initValue / 4); //定时器1装初值
+  49   1          TH1 = (65536 - Main_Fosc / initValue / 4) >> 8;
+  50   1      
+  51   1          if (clkoutEn)
+  52   1          {
+C51 COMPILER V9.54   TIMER                                                                 03/12/2022 18:23:30 PAGE 2   
+
+  53   2              INT_CLKO |= 1 << 1; //输出时钟
+  54   2          }
+  55   1          else
+  56   1          {
+  57   2              INT_CLKO &= ~(0 << 1); //不输出时钟
+  58   2          }
+  59   1      
+  60   1          TR1 = 1; //使能计数
+  61   1      }
+  62          
+  63          void Timer2_init(bool irtEn, u32 initValue, u8 TMode, bool T2_1T, bool clkoutEn)
+  64          {
+  65   1          AUXR &= ~0x1c; //停止计数, 定时模式, 12T模式
+  66   1          if (irtEn)
+  67   1          {
+  68   2              IE2 |= ET2; //允许中断
+  69   2          }
+  70   1          else
+  71   1          {
+  72   2              IE2 &= ~ET2; //
+  73   2          }
+  74   1      
+  75   1          TMOD |= TMode;
+  76   1          T4T3M |= (((u8)T2_1T) << 1);               //1T mode
+  77   1          T2L = (65536 - Main_Fosc / initValue / 4); //定时器2装初值，固定为16位重载模式
+  78   1          T2H = (65536 - Main_Fosc / initValue / 4) >> 8;
+  79   1      
+  80   1          // INT_CLKO &= ((u8)irtEn) << 4 | 0xef;
+  81   1          if (clkoutEn)
+  82   1          {
+  83   2              INT_CLKO |= 0x04; //输出时钟
+  84   2          }
+  85   1          else
+  86   1          {
+  87   2              INT_CLKO &= ~0x04; //不输出时钟
+  88   2          }
+  89   1          AUXR |= (1 << 4); //开始运行
+  90   1      }
+  91          
+  92          void Timer3_init(bool irtEn, u32 initValue, bool T3_1T, bool clkoutEn)
+  93          {
+  94   1          T4T3M &= ~0x0f; //停止计数
+  95   1          if (irtEn)
+  96   1          {
+  97   2              IE2 |= ET3; //允许中断
+  98   2          }
+  99   1          else
+ 100   1          {
+ 101   2              IE2 &= ~ET3;
+ 102   2          }
+ 103   1      
+ 104   1          T4T3M |= (((u8)T3_1T) << 1); //1T mode
+ 105   1      
+ 106   1          T3L = (65536 - Main_Fosc / initValue / 4); //定时器3装初值，固定为16位重载模式
+ 107   1          T3H = (65536 - Main_Fosc / initValue / 4) >> 8;
+ 108   1      
+ 109   1          // INT_CLKO &= ((u8)irtEn) << 5 | 0xDf;
+ 110   1      
+ 111   1          if (clkoutEn)
+ 112   1          {
+ 113   2              T4T3M |= 0x01; //输出时钟
+ 114   2          }
+C51 COMPILER V9.54   TIMER                                                                 03/12/2022 18:23:30 PAGE 3   
+
+ 115   1          else
+ 116   1          {
+ 117   2              T4T3M &= ~0x01; //不输出时钟
+ 118   2          }
+ 119   1          T4T3M |= (1 << 3); //使能计数
+ 120   1      }
+ 121          
+ 122          void Timer4_init(bool irtEn, u32 initValue, bool T4_1T, bool clkoutEn)
+ 123          {
+ 124   1          T4T3M &= ~0xf0; //停止计数, 定时模式, 12T模式, 不输出时钟
+ 125   1          if (irtEn)
+ 126   1          {
+ 127   2              IE2 |= ET4; //允许中断
+ 128   2          }
+ 129   1          else
+ 130   1          {
+ 131   2              IE2 &= ~ET4;
+ 132   2          }
+ 133   1      
+ 134   1          T4T3M |= (((u8)T4_1T) << 1); //1T mode
+ 135   1      
+ 136   1          T4L = (65536 - Main_Fosc / initValue / 4); //定时器4装初值。固定为16位重载模式
+ 137   1          T4H = (65536 - Main_Fosc / initValue / 4) >> 8;
+ 138   1      
+ 139   1          // INT_CLKO &= ((u8)irtEn) << 6 | 0xBf;
+ 140   1      
+ 141   1          if (clkoutEn)
+ 142   1          {
+ 143   2              T4T3M |= 0x10; //输出时钟
+ 144   2          }
+ 145   1          else
+ 146   1          {
+ 147   2              T4T3M &= ~0x10; //不输出时钟
+ 148   2          }
+ 149   1          T4T3M |= (1 << 7); //开始运行
+ 150   1      }
+ 151          
+ 152          void Timer3_start(void)
+ 153          {
+ 154   1          T4T3M |= (1 << 3); //使能计数
+ 155   1      }
+ 156          void Timer3_stop(void)
+ 157          {
+ 158   1          T4T3M &= ~0x0f; //停止计数
+ 159   1      }
+ 160          void Timer4_start(void)
+ 161          {
+ 162   1          T4T3M |= (1 << 7); //开始运行
+ 163   1      }
+ 164          void Timer4_stop(void)
+ 165          {
+ 166   1          T4T3M &= ~0xf0; //停止计数
+ 167   1      }
+ 168          // //========================================================================
+ 169          // // 函数: void timer0Isr (void) interrupt TIMER0_VECTOR
+ 170          // // 描述:  timer0中断函数.
+ 171          // // 参数: none.
+ 172          // // 返回: none.
+ 173          // // 版本: V1.0, 2015-1-12
+ 174          // //========================================================================
+ 175          // void timer0Isr(void) interrupt TIMER0_VECTOR
+ 176          // {
+C51 COMPILER V9.54   TIMER                                                                 03/12/2022 18:23:30 PAGE 4   
+
+ 177          // }
+ 178          
+ 179          //========================================================================
+ 180          // 函数: void timer1Isr (void) interrupt TIMER1_VECTOR
+ 181          // 描述:  timer1中断函数.
+ 182          // 参数: none.
+ 183          // 返回: none.
+ 184          // 版本: V1.0, 2015-1-12
+ 185          //========================================================================
+ 186          // void timer1Isr(void) interrupt TIMER1_VECTOR
+ 187          // {
+ 188          //     DacSDI = ~DacSDI;
+ 189          // }
+ 190          
+ 191          //========================================================================
+ 192          // 函数: void timer2Isr (void) interrupt TIMER2_VECTOR
+ 193          // 描述:  timer2中断函数.
+ 194          // 参数: none.
+ 195          // 返回: none.
+ 196          // 版本: V1.0, 2015-1-12
+ 197          //========================================================================
+ 198          void timer2Isr(void) interrupt TIMER2_VECTOR
+ 199          {
+ 200   1      
+ 201   1          if (timer2Cnt++ > 100)
+ 202   1          {
+ 203   2              timer2Cnt = 0;
+ 204   2              if (++dacChn >= MAXAD7124CHNS)
+ 205   2              {
+ 206   3                  dacChn = 0;
+ 207   3              }
+ 208   2          }
+ 209   1      }
+ 210          
+ 211          //========================================================================
+ 212          // 函数: void timer3Isr (void) interrupt TIMER3_VECTOR
+ 213          // 描述:  timer3中断函数.
+ 214          // 参数: none.
+ 215          // 返回: none.
+ 216          // 版本: V1.0, 2015-1-12
+ 217          //========================================================================
+ 218          void timer3Isr(void) interrupt TIMER3_VECTOR
+ 219          {
+ 220   1          modbusDataGapCnt++;
+ 221   1          if (modbusDataGapCnt > MODBUS_T_x_CNT(3.5))
+ 222   1          {
+ 223   2              dataState = IS_ADDR;
+ 224   2              Timer3_stop();
+ 225   2              return;
+ 226   2          }
+ 227   1      
+ 228   1          if (modbusDataGapCnt > MODBUS_T_x_CNT(1.5))
+ 229   1          {
+ 230   2              dataState = IS_IDLE;
+ 231   2              if (wptr == 0) //消除modbusDataGapCnt在1.5和3.5字符时间之间重复跑下面的程序段�
+             -�节省指针pRxBuffer定向和memset的时间（大约30ms）
+ 232   2              {
+ 233   3                  return;
+ 234   3              }
+ 235   2              if (wptr > 7) //进入这个逻辑的是有效数据超过7个（wptr++不含地址），认为这
+             -wptr个数据是有效的（但未经crc）
+ 236   2              {
+C51 COMPILER V9.54   TIMER                                                                 03/12/2022 18:23:30 PAGE 5   
+
+ 237   3                  EnQueue(&sq, rxBuffer, wptr);
+ 238   3                  EnQueue(&nDataCntSq, pWptr, 1);
+ 239   3              }
+ 240   2              pRxBuffer = rxBuffer;
+ 241   2              memset(pRxBuffer, 0, wptr);
+ 242   2              wptr = 0;
+ 243   2          }
+ 244   1      }
+ 245          
+ 246          //========================================================================
+ 247          // 函数: void timer4Isr (void) interrupt TIMER4_VECTOR
+ 248          // 描述:  timer4中断函数.
+ 249          // 参数: none.
+ 250          // 返回: none.
+ 251          // 版本: V1.0, 2015-1-12
+ 252          //========================================================================
+ 253          void timer4Isr(void) interrupt TIMER4_VECTOR
+ 254          {
+ 255   1          timer4Cnt++;
+ 256   1          if (timer4Cnt == ADCSETUPTIME) //80ms
+ 257   1          {
+ 258   2              timer4Cnt = 0;
+ 259   2              IE1 = 0; //清INT1标志位
+ 260   2              EX1 = 1; //INT1中断开
+ 261   2              P10 = ~P10;
+ 262   2          }
+ 263   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1056    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     25    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =     12    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

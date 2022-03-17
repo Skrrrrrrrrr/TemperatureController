@@ -1,0 +1,130 @@
+C51 COMPILER V9.54   FIFOQUEUE                                                             03/12/2022 18:23:29 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE FIFOQUEUE
+OBJECT MODULE PLACED IN ..\Obj\fifoqueue.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE fifoqueue.c LARGE OPTIMIZE(0,SPEED) BROWSE IN
+                    -CDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Hardware\PIT;
+                    -..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\HARDWARE\W
+                    -DT) DEBUG OBJECTEXTEND PRINT(.\Listings\fifoqueue.lst) TABS(2) OBJECT(..\Obj\fifoqueue.obj)
+
+line level    source
+
+   1          #include "fifoqueue.h"
+   2          
+   3          // //Queue Init
+   4          // void QueueInit(struct FifoQueue *queue)
+   5          // {
+   6          //     queue.front = queue.rear; //初始化时队列头队列首相连
+   7          //     queue.count = 0;           //队列计数为0
+   8          // }
+   9          
+  10          // // Queue In
+  11          // u8 QueueIn(struct FifoQueue *queue, ElemType sdat) //数据进入队列
+  12          // {
+  13          //     if ((queue.front == queue.rear) && (queue.count == QueueSize))
+  14          //     {                     // full //判断如果队列满了
+  15          //         return QueueFull; //返回队列满的标志
+  16          //     }
+  17          //     else
+  18          //     { // in
+  19          //         queue.dat[queue.rear] = sdat;
+  20          //         queue.rear = (queue.rear + 1) % QueueSize;
+  21          //         queue.count = queue.count + 1;
+  22          //         return QueueOperateOk;
+  23          //     }
+  24          // }
+  25          
+  26          // // Queue Out
+  27          // u8 QueueOut(struct FifoQueue *queue, ElemType *sdat)
+  28          // {
+  29          //     if ((queue.front == queue.rear) && (queue.count == 0))
+  30          //     { // empty
+  31          //         return QueueEmpty;
+  32          //     }
+  33          //     else
+  34          //     { // out
+  35          //         *sdat = queue.dat[queue.front];
+  36          //         queue.front = (queue.front + 1) % QueueSize;
+  37          //         queue.count = queue.count - 1;
+  38          //         return QueueOperateOk;
+  39          //     }
+  40          // }
+  41          
+  42          //-----循环队列的基本操作的算法描述-----
+  43          void QueueInit(SqQueue *sq)
+  44          {
+  45   1          //构造一个空队列Q
+  46   1          // sq->base = (u8 *)malloc(MAXQUEUESIZE * sizeof(u8));
+  47   1          memset(sq->base, '\0', MAXQUEUESIZE * sizeof(u8));
+  48   1          // if (!sq->base)
+  49   1          //     return OVERFLOW; // 存储分配失败
+  50   1          sq->front = 0;
+  51   1          sq->rear = 0;
+  52   1      }
+C51 COMPILER V9.54   FIFOQUEUE                                                             03/12/2022 18:23:29 PAGE 2   
+
+  53          int GetQueueLength(SqQueue *sq)
+  54          {
+  55   1          //返回sq的元素个数，即队列的长度
+  56   1          return (MAXQUEUESIZE - sq->front + sq->rear) % MAXQUEUESIZE;
+  57   1      }
+  58          void EnQueue(SqQueue *sq, u8 *ch, u8 len)
+  59          {
+  60   1          u8 enCnt = 0;
+  61   1          //插入元素ch为sq的新的队尾元素
+  62   1          if ((sq->rear + 1) % MAXQUEUESIZE == sq->front)
+  63   1              return; // 队列满
+  64   1          while (enCnt < len)
+  65   1          {
+  66   2              sq->base[sq->rear++] = ch[enCnt++];
+  67   2              if (sq->rear == MAXQUEUESIZE) //如果MAXQUEUESIZE=256，可以省略此函数段
+  68   2              {
+  69   3                  sq->rear = 0;
+  70   3              }
+  71   2          }
+  72   1          // while (enCnt < len)
+  73   1          // {
+  74   1          //     sq->base[sq->rear + enCnt] = ch[enCnt];
+  75   1          //     enCnt++;
+  76   1          // }
+  77   1      
+  78   1          // // sq->base += ch;
+  79   1          // sq->rear = (sq->rear + len) % MAXQUEUESIZE;
+  80   1      }
+  81          void DeQueue(SqQueue *sq, u8 **ch, u8 len)
+  82          {
+  83   1          u8 deCnt = 0;
+  84   1          if (sq->front == sq->rear)
+  85   1              return;
+  86   1          while (deCnt < len)
+  87   1          {
+  88   2              *(*ch + deCnt) = sq->base[sq->front++];
+  89   2              deCnt++;
+  90   2              if (sq->front == MAXQUEUESIZE) //如果MAXQUEUESIZE=256，可以省略此函数段
+  91   2              {
+  92   3                  sq->front = 0;
+  93   3              }
+  94   2          }
+  95   1          // while (deCnt < len)
+  96   1          // {
+  97   1          //     *(*ch + deCnt) = sq->base[sq->front + deCnt];
+  98   1          //     deCnt++;
+  99   1          // }
+ 100   1      
+ 101   1          // sq->front = (sq->front + len) % MAXQUEUESIZE;
+ 102   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    591    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     22    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,604 @@
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE GPIO
+OBJECT MODULE PLACED IN ..\Obj\GPIO.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\Hardware\GPIO\GPIO.c LARGE OPTIMIZE(0,SPEE
+                    -D) BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\H
+                    -ardware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;.
+                    -.\HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\GPIO.lst) TABS(2) OBJECT(..\Obj\GPIO.obj)
+
+line level    source
+
+   1          /**********************************************************
+   2              不建议更改此文档，相关函数功能请查看相关头文件定义
+   3          **********************************************************/
+   4          #include "GPIO.h"
+   5          
+   6          void IO_init()
+   7          {
+   8   1        P0M1 = 0x00;
+   9   1        P0M0 = 0x00; //设置为准双向口
+  10   1        P1M1 = 0x00;
+  11   1        P1M0 = 0x00; //设置为准双向口
+  12   1        P2M1 = 0x00;
+  13   1        P2M0 = 0x00; //设置为准双向口
+  14   1        P3M1 = 0x00;
+  15   1        P3M0 = 0x00; //设置为准双向口
+  16   1        P4M1 = 0x00;
+  17   1        P4M0 = 0x00; //设置为准双向口
+  18   1        P5M1 = 0x00;
+  19   1        P5M0 = 0x00; //设置为准双向口
+  20   1        P6M1 = 0x00;
+  21   1        P6M0 = 0x00; //设置为准双向口
+  22   1        P7M1 = 0x00;
+  23   1        P7M0 = 0x00; //设置为准双向口
+  24   1      }
+  25          
+  26          // void GPIO_init_pin(int pin, int mode) //初始化单个IO引脚函数
+  27          // {
+  28          //  int a, b;
+  29          //  u8 c[8] = {0xfe, 0xfd, 0xfb, 0xf7, 0xef, 0xdf, 0xbf, 0x7f};
+  30          //  a = pin / 10; //取得端口号
+  31          //  b = pin % 10; //取得引脚号
+  32          //  switch (a)
+  33          //  {
+  34          //  case 0:
+  35          //    switch (mode)
+  36          //    {
+  37          //    case 0:
+  38          //      P0M0 &= c[b];
+  39          //      P0M1 &= c[b];
+  40          //      break;
+  41          //    case 1:
+  42          //      P0M0 |= ~c[b];
+  43          //      P0M1 &= c[b];
+  44          //      break;
+  45          //    case 2:
+  46          //      P0M0 &= c[b];
+  47          //      P0M1 |= ~c[b];
+  48          //      break;
+  49          //    case 3:
+  50          //      P0M0 |= ~c[b];
+  51          //      P0M1 |= ~c[b];
+  52          //      break;
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 2   
+
+  53          //    }
+  54          //    break;
+  55          //  case 1:
+  56          //    switch (mode)
+  57          //    {
+  58          //    case 0:
+  59          //      P1M0 &= c[b];
+  60          //      P1M1 &= c[b];
+  61          //      break;
+  62          //    case 1:
+  63          //      P1M0 |= ~c[b];
+  64          //      P1M1 &= c[b];
+  65          //      break;
+  66          //    case 2:
+  67          //      P1M0 &= c[b];
+  68          //      P1M1 |= ~c[b];
+  69          //      break;
+  70          //    case 3:
+  71          //      P1M0 |= ~c[b];
+  72          //      P1M1 |= ~c[b];
+  73          //      break;
+  74          //    }
+  75          //    break;
+  76          //  case 2:
+  77          //    switch (mode)
+  78          //    {
+  79          //    case 0:
+  80          //      P2M0 &= c[b];
+  81          //      P2M1 &= c[b];
+  82          //      break;
+  83          //    case 1:
+  84          //      P2M0 |= ~c[b];
+  85          //      P2M1 &= c[b];
+  86          //      break;
+  87          //    case 2:
+  88          //      P2M0 &= c[b];
+  89          //      P2M1 |= ~c[b];
+  90          //      break;
+  91          //    case 3:
+  92          //      P2M0 |= ~c[b];
+  93          //      P2M1 |= ~c[b];
+  94          //      break;
+  95          //    }
+  96          //    break;
+  97          //  case 3:
+  98          //    switch (mode)
+  99          //    {
+ 100          //    case 0:
+ 101          //      P3M0 &= c[b];
+ 102          //      P3M1 &= c[b];
+ 103          //      break;
+ 104          //    case 1:
+ 105          //      P3M0 |= ~c[b];
+ 106          //      P3M1 &= c[b];
+ 107          //      break;
+ 108          //    case 2:
+ 109          //      P3M0 &= c[b];
+ 110          //      P3M1 |= ~c[b];
+ 111          //      break;
+ 112          //    case 3:
+ 113          //      P3M0 |= ~c[b];
+ 114          //      P3M1 |= ~c[b];
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 3   
+
+ 115          //      break;
+ 116          //    }
+ 117          //    break;
+ 118          //  case 4:
+ 119          //    switch (mode)
+ 120          //    {
+ 121          //    case 0:
+ 122          //      P4M0 &= c[b];
+ 123          //      P4M1 &= c[b];
+ 124          //      break;
+ 125          //    case 1:
+ 126          //      P4M0 |= ~c[b];
+ 127          //      P4M1 &= c[b];
+ 128          //      break;
+ 129          //    case 2:
+ 130          //      P4M0 &= c[b];
+ 131          //      P4M1 |= ~c[b];
+ 132          //      break;
+ 133          //    case 3:
+ 134          //      P4M0 |= ~c[b];
+ 135          //      P4M1 |= ~c[b];
+ 136          //      break;
+ 137          //    }
+ 138          //    break;
+ 139          //  case 5:
+ 140          //    switch (mode)
+ 141          //    {
+ 142          //    case 0:
+ 143          //      P5M0 &= c[b];
+ 144          //      P5M1 &= c[b];
+ 145          //      break;
+ 146          //    case 1:
+ 147          //      P5M0 |= ~c[b];
+ 148          //      P5M1 &= c[b];
+ 149          //      break;
+ 150          //    case 2:
+ 151          //      P5M0 &= c[b];
+ 152          //      P5M1 |= ~c[b];
+ 153          //      break;
+ 154          //    case 3:
+ 155          //      P5M0 |= ~c[b];
+ 156          //      P5M1 |= ~c[b];
+ 157          //      break;
+ 158          //    }
+ 159          //    break;
+ 160          //  case 6:
+ 161          //    switch (mode)
+ 162          //    {
+ 163          //    case 0:
+ 164          //      P6M0 &= c[b];
+ 165          //      P6M1 &= c[b];
+ 166          //      break;
+ 167          //    case 1:
+ 168          //      P6M0 |= ~c[b];
+ 169          //      P6M1 &= c[b];
+ 170          //      break;
+ 171          //    case 2:
+ 172          //      P6M0 &= c[b];
+ 173          //      P6M1 |= ~c[b];
+ 174          //      break;
+ 175          //    case 3:
+ 176          //      P6M0 |= ~c[b];
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 4   
+
+ 177          //      P6M1 |= ~c[b];
+ 178          //      break;
+ 179          //    }
+ 180          //    break;
+ 181          //  case 7:
+ 182          //    switch (mode)
+ 183          //    {
+ 184          //    case 0:
+ 185          //      P7M0 &= c[b];
+ 186          //      P7M1 &= c[b];
+ 187          //      break;
+ 188          //    case 1:
+ 189          //      P7M0 |= ~c[b];
+ 190          //      P7M1 &= c[b];
+ 191          //      break;
+ 192          //    case 2:
+ 193          //      P7M0 &= c[b];
+ 194          //      P7M1 |= ~c[b];
+ 195          //      break;
+ 196          //    case 3:
+ 197          //      P7M0 |= ~c[b];
+ 198          //      P7M1 |= ~c[b];
+ 199          //      break;
+ 200          //    }
+ 201          //    break;
+ 202          //  }
+ 203          // }
+ 204          
+ 205          // bit Get_IO(int IO)
+ 206          // {
+ 207          //  bit status;
+ 208          //  switch (IO)
+ 209          //  {
+ 210          //  case 00:
+ 211          //    status = P00;
+ 212          //    break;
+ 213          //  case 01:
+ 214          //    status = P01;
+ 215          //    break;
+ 216          //  case 02:
+ 217          //    status = P02;
+ 218          //    break;
+ 219          //  case 03:
+ 220          //    status = P03;
+ 221          //    break;
+ 222          //  case 04:
+ 223          //    status = P04;
+ 224          //    break;
+ 225          //  case 05:
+ 226          //    status = P05;
+ 227          //    break;
+ 228          //  case 06:
+ 229          //    status = P06;
+ 230          //    break;
+ 231          //  case 07:
+ 232          //    status = P07;
+ 233          //    break;
+ 234          
+ 235          //  case 10:
+ 236          //    status = P10;
+ 237          //    break;
+ 238          //  case 11:
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 5   
+
+ 239          //    status = P11;
+ 240          //    break;
+ 241          //  case 12:
+ 242          //    status = P12;
+ 243          //    break;
+ 244          //  case 13:
+ 245          //    status = P13;
+ 246          //    break;
+ 247          //  case 14:
+ 248          //    status = P14;
+ 249          //    break;
+ 250          //  case 15:
+ 251          //    status = P15;
+ 252          //    break;
+ 253          //  case 16:
+ 254          //    status = P16;
+ 255          //    break;
+ 256          //  case 17:
+ 257          //    status = P17;
+ 258          //    break;
+ 259          
+ 260          //  case 20:
+ 261          //    status = P20;
+ 262          //    break;
+ 263          //  case 21:
+ 264          //    status = P21;
+ 265          //    break;
+ 266          //  case 22:
+ 267          //    status = P22;
+ 268          //    break;
+ 269          //  case 23:
+ 270          //    status = P23;
+ 271          //    break;
+ 272          //  case 24:
+ 273          //    status = P24;
+ 274          //    break;
+ 275          //  case 25:
+ 276          //    status = P25;
+ 277          //    break;
+ 278          //  case 26:
+ 279          //    status = P26;
+ 280          //    break;
+ 281          //  case 27:
+ 282          //    status = P27;
+ 283          //    break;
+ 284          
+ 285          //  case 30:
+ 286          //    status = P30;
+ 287          //    break;
+ 288          //  case 31:
+ 289          //    status = P31;
+ 290          //    break;
+ 291          //  case 32:
+ 292          //    status = P32;
+ 293          //    break;
+ 294          //  case 33:
+ 295          //    status = P33;
+ 296          //    break;
+ 297          //  case 34:
+ 298          //    status = P34;
+ 299          //    break;
+ 300          //  case 35:
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 6   
+
+ 301          //    status = P35;
+ 302          //    break;
+ 303          //  case 36:
+ 304          //    status = P36;
+ 305          //    break;
+ 306          //  case 37:
+ 307          //    status = P37;
+ 308          //    break;
+ 309          
+ 310          //  case 40:
+ 311          //    status = P40;
+ 312          //    break;
+ 313          //  case 41:
+ 314          //    status = P41;
+ 315          //    break;
+ 316          //  case 42:
+ 317          //    status = P42;
+ 318          //    break;
+ 319          //  case 43:
+ 320          //    status = P43;
+ 321          //    break;
+ 322          //  case 44:
+ 323          //    status = P44;
+ 324          //    break;
+ 325          
+ 326          //  case 50:
+ 327          //    status = P50;
+ 328          //    break;
+ 329          //  case 51:
+ 330          //    status = P51;
+ 331          //    break;
+ 332          //  case 52:
+ 333          //    status = P52;
+ 334          //    break;
+ 335          //  case 53:
+ 336          //    status = P53;
+ 337          //    break;
+ 338          //  case 54:
+ 339          //    status = P54;
+ 340          //    break;
+ 341          //  case 55:
+ 342          //    status = P55;
+ 343          //    break;
+ 344          
+ 345          // case 60:
+ 346          //  status = P60;
+ 347          //  break;
+ 348          // case 61:
+ 349          //  status = P61;
+ 350          //  break;
+ 351          // case 62:
+ 352          //  status = P62;
+ 353          //  break;
+ 354          // case 63:
+ 355          //  status = P63;
+ 356          //  break;
+ 357          // case 64:
+ 358          //  status = P64;
+ 359          //  break;
+ 360          // case 65:
+ 361          //  status = P65;
+ 362          //  break;
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 7   
+
+ 363          // case 66:
+ 364          //  status = P66;
+ 365          //  break;
+ 366          // case 67:
+ 367          //  status = P67;
+ 368          //  break;
+ 369          
+ 370          // case 70:
+ 371          //  status = P70;
+ 372          //  break;
+ 373          // case 71:
+ 374          //  status = P71;
+ 375          //  break;
+ 376          // case 72:
+ 377          //  status = P72;
+ 378          //  break;
+ 379          // case 73:
+ 380          //  status = P73;
+ 381          //  break;
+ 382          // case 74:
+ 383          //  status = P74;
+ 384          //  break;
+ 385          // case 75:
+ 386          //  status = P75;
+ 387          //  break;
+ 388          // case 76:
+ 389          //  status = P76;
+ 390          //  break;
+ 391          // case 77:
+ 392          //  status = P77;
+ 393          //  break;
+ 394          //  default:
+ 395          //    status = 1;
+ 396          //    break; //其他情况
+ 397          //  }
+ 398          //  return status;
+ 399          // }
+ 400          
+ 401          // void Out_IO(unsigned char IO, bit status)
+ 402          // {
+ 403          //  switch (IO)
+ 404          //  {
+ 405          //  case 00:
+ 406          //    P00 = status;
+ 407          //    break;
+ 408          //  case 01:
+ 409          //    P01 = status;
+ 410          //    break;
+ 411          //  case 02:
+ 412          //    P02 = status;
+ 413          //    break;
+ 414          //  case 03:
+ 415          //    P03 = status;
+ 416          //    break;
+ 417          //  case 04:
+ 418          //    P04 = status;
+ 419          //    break;
+ 420          //  case 05:
+ 421          //    P05 = status;
+ 422          //    break;
+ 423          //  case 06:
+ 424          //    P06 = status;
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 8   
+
+ 425          //    break;
+ 426          //  case 07:
+ 427          //    P07 = status;
+ 428          //    break;
+ 429          
+ 430          //  case 10:
+ 431          //    P10 = status;
+ 432          //    break;
+ 433          //  case 11:
+ 434          //    P11 = status;
+ 435          //    break;
+ 436          //  case 12:
+ 437          //    P12 = status;
+ 438          //    break;
+ 439          //  case 13:
+ 440          //    P13 = status;
+ 441          //    break;
+ 442          //  case 14:
+ 443          //    P14 = status;
+ 444          //    break;
+ 445          //  case 15:
+ 446          //    P15 = status;
+ 447          //    break;
+ 448          //  case 16:
+ 449          //    P16 = status;
+ 450          //    break;
+ 451          //  case 17:
+ 452          //    P17 = status;
+ 453          //    break;
+ 454          
+ 455          //  case 20:
+ 456          //    P20 = status;
+ 457          //    break;
+ 458          //  case 21:
+ 459          //    P21 = status;
+ 460          //    break;
+ 461          //  case 22:
+ 462          //    P22 = status;
+ 463          //    break;
+ 464          //  case 23:
+ 465          //    P23 = status;
+ 466          //    break;
+ 467          //  case 24:
+ 468          //    P24 = status;
+ 469          //    break;
+ 470          //  case 25:
+ 471          //    P25 = status;
+ 472          //    break;
+ 473          //  case 26:
+ 474          //    P26 = status;
+ 475          //    break;
+ 476          //  case 27:
+ 477          //    P27 = status;
+ 478          //    break;
+ 479          
+ 480          //  case 30:
+ 481          //    P30 = status;
+ 482          //    break;
+ 483          //  case 31:
+ 484          //    P31 = status;
+ 485          //    break;
+ 486          //  case 32:
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 9   
+
+ 487          //    P32 = status;
+ 488          //    break;
+ 489          //  case 33:
+ 490          //    P33 = status;
+ 491          //    break;
+ 492          //  case 34:
+ 493          //    P34 = status;
+ 494          //    break;
+ 495          //  case 35:
+ 496          //    P35 = status;
+ 497          //    break;
+ 498          //  case 36:
+ 499          //    P36 = status;
+ 500          //    break;
+ 501          //  case 37:
+ 502          //    P37 = status;
+ 503          //    break;
+ 504          
+ 505          //  case 40:
+ 506          //    P40 = status;
+ 507          //    break;
+ 508          //  case 41:
+ 509          //    P41 = status;
+ 510          //    break;
+ 511          //  case 42:
+ 512          //    P42 = status;
+ 513          //    break;
+ 514          //  case 43:
+ 515          //    P43 = status;
+ 516          //    break;
+ 517          //  case 44:
+ 518          //    P44 = status;
+ 519          //    break;
+ 520          
+ 521          //  case 50:
+ 522          //    P50 = status;
+ 523          //    break;
+ 524          //  case 51:
+ 525          //    P51 = status;
+ 526          //    break;
+ 527          //  case 52:
+ 528          //    P52 = status;
+ 529          //    break;
+ 530          //  case 53:
+ 531          //    P53 = status;
+ 532          //    break;
+ 533          //  case 54:
+ 534          //    P54 = status;
+ 535          //    break;
+ 536          //  case 55:
+ 537          //    P55 = status;
+ 538          //    break;
+ 539          
+ 540          // case 60: P60=status;break;
+ 541          // case 61: P61=status;break;
+ 542          // case 62: P62=status;break;
+ 543          // case 63: P63=status;break;
+ 544          // case 64: P64=status;break;
+ 545          // case 65: P65=status;break;
+ 546          // case 66: P66=status;break;
+ 547          // case 67: P67=status;break;
+ 548          
+C51 COMPILER V9.54   GPIO                                                                  03/12/2022 18:23:30 PAGE 10  
+
+ 549          // case 70: P70=status;break;
+ 550          // case 71: P71=status;break;
+ 551          // case 72: P72=status;break;
+ 552          // case 73: P73=status;break;
+ 553          // case 74: P74=status;break;
+ 554          // case 75: P75=status;break;
+ 555          // case 76: P76=status;break;
+ 556          // case 77: P77=status;break;
+ 557          //  default:
+ 558          //    break; //其他情况
+ 559          //  }
+ 560          // }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     49    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

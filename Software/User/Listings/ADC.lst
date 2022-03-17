@@ -1,0 +1,117 @@
+C51 COMPILER V9.54   ADC                                                                   03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE ADC
+OBJECT MODULE PLACED IN ..\Obj\ADC.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE ..\HARDWARE\ADC\ADC.c LARGE OPTIMIZE(0,SPEED)
+                    - BROWSE INCDIR(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Har
+                    -dware\PIT;..\Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\
+                    -HARDWARE\WDT) DEBUG OBJECTEXTEND PRINT(.\Listings\ADC.lst) TABS(2) OBJECT(..\Obj\ADC.obj)
+
+line level    source
+
+   1          /**********************************************************
+   2              不建议更改此文档，相关函数功能请查看相关头文件定义
+   3          **********************************************************/
+   4          #include "ADC.h"
+   5          
+   6          void ADC_init(int pin, int speed) //ADC初始化函数
+   7          {
+   8   1        switch (pin)
+   9   1        {
+  10   2        case 0:
+  11   2          P1M0 &= ~0x01;
+  12   2          P1M1 |= 0x01;
+  13   2          break; //ADC通道0
+  14   2        case 1:
+  15   2          P1M0 &= ~0x02;
+  16   2          P1M1 |= 0x02;
+  17   2          break; //ADC通道1
+  18   2        case 2:
+  19   2          P1M0 &= ~0x04;
+  20   2          P1M1 |= 0x04;
+  21   2          break; //ADC通道2
+  22   2        case 3:
+  23   2          P1M0 &= ~0x08;
+  24   2          P1M1 |= 0x08;
+  25   2          break; //ADC通道3
+  26   2        case 4:
+  27   2          P1M0 &= ~0x10;
+  28   2          P1M1 |= 0x10;
+  29   2          break; //ADC通道4
+  30   2        case 5:
+  31   2          P1M0 &= ~0x20;
+  32   2          P1M1 |= 0x20;
+  33   2          break; //ADC通道5
+  34   2        case 6:
+  35   2          P1M0 &= ~0x40;
+  36   2          P1M1 |= 0x40;
+  37   2          break; //ADC通道6
+  38   2        case 7:
+  39   2          P1M0 &= ~0x80;
+  40   2          P1M1 |= 0x80;
+  41   2          break; //ADC通道7
+  42   2        }
+  43   1        ADC_RES = 0;          //清空结果寄存器高8位
+  44   1        ADC_RESL = 0;         //清空结果寄存器低8位
+  45   1        ADC_CONTR |= 0x80;        //使能ADC模块
+  46   1        ADCCFG = 0x20 | (16 - speed); //选择数据输出格式为低8位+高4位，选择ADC速度
+  47   1      }
+  48          
+  49          int ADC_get(int pin) //取得ADC转换值
+  50          {
+  51   1        int u;
+  52   1      
+C51 COMPILER V9.54   ADC                                                                   03/12/2022 18:23:30 PAGE 2   
+
+  53   1        switch (pin) //AD通道选择
+  54   1        {
+  55   2        case 0:
+  56   2          ADC_CONTR = 0xC0;
+  57   2          break; //通道P10
+  58   2        case 1:
+  59   2          ADC_CONTR = 0xC1;
+  60   2          break; //通道P11
+  61   2        case 2:
+  62   2          ADC_CONTR = 0xC2;
+  63   2          break; //通道P12
+  64   2        case 3:
+  65   2          ADC_CONTR = 0xC3;
+  66   2          break; //通道P13
+  67   2        case 4:
+  68   2          ADC_CONTR = 0xC4;
+  69   2          break; //通道P14
+  70   2        case 5:
+  71   2          ADC_CONTR = 0xC5;
+  72   2          break; //通道P15
+  73   2        case 6:
+  74   2          ADC_CONTR = 0xC6;
+  75   2          break; //通道P16
+  76   2        case 7:
+  77   2          ADC_CONTR = 0xC7;
+  78   2          break; //通道P17
+  79   2        }
+  80   1        _nop_(); //等待4空指令
+  81   1        _nop_();
+  82   1        _nop_();
+  83   1        _nop_();
+  84   1        while (!(ADC_CONTR & 0x20))
+  85   1          ;             //等待ADC转换完成
+  86   1        ADC_CONTR &= ~0x20;       //清除ADC标志
+  87   1        u = ADC_RES * 256 + ADC_RESL; //结果转换
+  88   1        return u;
+  89   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    299    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      8    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

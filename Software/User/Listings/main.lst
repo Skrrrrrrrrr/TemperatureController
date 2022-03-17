@@ -1,0 +1,484 @@
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\Obj\main.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE main.c LARGE OPTIMIZE(0,SPEED) BROWSE INCDIR(
+                    -..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Hardware\PIT;..\Ha
+                    -rdware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\HARDWARE\WDT) D
+                    -EBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(..\Obj\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          
+   3          /****************************************/
+   4          u8 localAddr = 0x01;
+   5          u8 code mac[16] = "DC_TT_0_001_0001";     //Ó²¼þµØÖ·
+   6          u8 code version[16] = "C51_LPD_TT0_0001"; //³ÌÐò°æ±¾
+   7          
+   8          /****************************************/
+   9          
+  10          ///////////////////////////////////////////////////////////
+  11          //ÐèÒª×ö³¬Ê±ÅÐ¶Ï£¬ÒªÔö¼Ó³ÌÐòÂ³°ôÐÔ
+  12          //////////////////////////////////////////////////////////
+  13          
+  14          // #define CodeToFloat(code) ((float)((code - 0x800000) >> (int)setup.pga) * BipolarDivide)
+  15          // #define CodeToFloat(code) ((float)(code >> (int)setup.pga) * SinglepolarDivide)
+  16          ///////////////////////////////////////////////////////////
+  17          //´®¿Ú½ÓÊÕµÄMODBUS
+  18          SqQueue sq;         //´æ´¢´óÁ¿µ½À´Êý¾Ý
+  19          SqQueue nDataCntSq; //´æ´¢Ã¿´Îµ½À´µÄÓÐÐ§Êý¾Ý£¨¾­¹ýCRC£©£¬º¬CRCµÄ2×Ö½ÚÊýÁ¿
+  20          
+  21          //////////////////////////////////////////////
+  22          //AD7124ÅäÖÃ£¬È«¾Ö±äÁ¿£¬·½±ãÉÏÎ»»úÐÞ¸ÄÅäÖÃºÍÍ¨µÀ
+  23          Channel chn[MAXAD7124CHNS];
+  24          Setup setup[MAXAD7124SETUPS];
+  25          
+  26          AdcControl adcControl;
+  27          Ad7124_8_IO ad7124_8_io;
+  28          //////////////////////////////////////////////
+  29          // //ÓÃÓÚÐ£×¼
+  30          // u32 offset[8] = {0};
+  31          // u32 gain[8] = {0};
+  32          /////////////////////////////////////////////
+  33          int chnValues[MAXAD7124CHNS] = {0};       //´æ´¢Í¨µÀ×ª»»ºóµÄÎÂ¶ÈÖµ£¬10±¶·Å´ó£¨BipolarDivisor£©
+  34          u16 inputRegValues[MAXINPUTREGNUM] = {0}; //ModbusÐ´Èë²âÊÔ
+  35          u8 coilValues[MAXCOILNUM] = {0};          //ÀëÉ¢Á¿Êý×é£¬Ò»¸ö×Ö½Ú´æÒ»¸ö×´Ì¬
+  36          AD7124_REG chnReg;                        //Êý¾Ý
+  37          AD7124_REG *pChnReg = &chnReg;            //Êý¾ÝÖ¸Õë
+  38          
+  39          // pChnReg = &chnReg;
+  40          ///////////////////////////////////////////
+  41          KFPs kfps;
+  42          KFP kfp[MAXAD7124CHNS];
+  43          KFP *pKfp;
+  44          // KFP *kfp = &_InitialKFP;
+  45          // rx_buffer_modbus.state = IS_ADDR;
+  46          ////////////////////////////////////////////////
+  47          float fRes[MAXAD7124CHNS] = {0.0};
+  48          // MyFloat fTemp[MAXAD7124CHNS];
+  49          float fKpfTemp[MAXAD7124CHNS] = 0.0;
+  50          int fTemp[MAXAD7124CHNS] = 0;
+  51          /////////////////////////////////////////////
+  52          bool adcAvailable = false;
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 2   
+
+  53          bool dacFlag = false;
+  54          u8 dacChn = 0; //¶ÔÓ¦MAXAD7124CHNS´ÎÖ÷¶¯ÏÔÊ¾£¨ÉÏ±¨Ä£ÄâÁ¿4-20maºÍ0-4.0V£©£¬¹¹³ÉÒ»¸öÑ­»·£»dacFlagÔÚtimer4ÖÐ¶
+             -ÏÖÃÎ»
+  55          //////////////////////////////////////////////
+  56          WDT_InitTypeDef *wdt; //¿´ÃÅ¹·
+  57          /////////////////////////////////////////////
+  58          void TimerInit(void);
+  59          void EEPROMInit(void);
+  60          void SysInit(void);
+  61          
+  62          void main()
+  63          {
+  64   1      
+  65   1          u8 i = 0;
+  66   1      
+  67   1          memset(pChnReg, 0, sizeof(chnReg));
+  68   1          pChnReg->addr = AD7124_COMM_REG;
+  69   1      
+  70   1          pKfp = kfp;
+  71   1          for (i = 0; i < MAXAD7124CHNS; i++)
+  72   1          {
+  73   2              *(pKfp + i) = _InitialKFP;
+  74   2          }
+  75   1      
+  76   1          SysInit();
+  77   1      
+  78   1          {
+  79   2              // SPISS = 1;
+  80   2              // DacCS = 0;
+  81   2              // DacCLK = 0;
+  82   2              // DacSDI = 0;
+  83   2              // DacLD = 0;
+  84   2          }
+  85   1      
+  86   1          delay_X_ms(100);
+  87   1      
+  88   1          //³õÊ¼»¯¼Ä´æÆ÷ÖµÎª´«¸ÐÆ÷Öµ
+  89   1          {
+  90   2              // for (i = 0; i <= 16; i++)
+  91   2              // {
+  92   2              //     ADC(pChnReg);                                                                              
+             -              // FS=2047Ê±ÐèÒª80msÒ»´Î×ª»»
+  93   2              //     fRes[pChnReg->addr] = (float)((pChnReg->value - 0x800000) >> setup[pChnReg->addr].pga) * Bi
+             -polarDivisor; ////»»Ëãºóµ¥Î»Îª¦¸£¬ÅÜÍêÐèÒª55us
+  94   2              //     if (fRes >= 100)
+  95   2              //     {
+  96   2              //         fTemp = 10 * Res2Temp_Pt100_ResLagrgerThan100(kalmanFilter(pKfp + pChnReg->addr, fRes[p
+             -ChnReg->addr])); //BipolarDivisorÎªe-13£¬ÐèÒª800us
+  97   2              //     }
+  98   2              //     else
+  99   2              //     {
+ 100   2              //         fTemp = 10 * Res2Temp_Pt100_ResLessThan100(kalmanFilter(pKfp + pChnReg->addr, fRes[pChn
+             -Reg->addr])); //BipolarDivisorÎªe-13£¬ÐèÒª800us
+ 101   2              //     }
+ 102   2              // }
+ 103   2              // chnValues[pChnReg->addr] = (int)(fTemp);
+ 104   2              adcAvailable = true;
+ 105   2              dacFlag = true;
+ 106   2              SPISS = 0;
+ 107   2              // Timer4_stop();
+ 108   2              // Timer4_start();
+ 109   2          }
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 3   
+
+ 110   1      
+ 111   1          while (1)
+ 112   1          {
+ 113   2              // spi_write_read(AD7124_COMM_REG_RD | AD7124_ID_REG);
+ 114   2              // spi_write_read(0xff);
+ 115   2      
+ 116   2              delay_X_ms(1);
+ 117   2              if (adcAvailable)
+ 118   2              {
+ 119   3                  adcAvailable = false;
+ 120   3                  // ADCTrig(pChnReg);
+ 121   3                  ADC(pChnReg); // FS=2047Ê±ÐèÒª80msÒ»´Î×ª»»
+ 122   3                  // pChnReg->value = 0x00000000;
+ 123   3                  // spi_write_read(AD7124_COMM_REG_RD | AD7124_DATA_REG);
+ 124   3                  // pChnReg->value |= (u32)spi_write_read(0x00);
+ 125   3                  // pChnReg->value <<= 8;
+ 126   3                  // pChnReg->value |= (u32)spi_write_read(0x00);
+ 127   3                  // pChnReg->value <<= 8;
+ 128   3                  // pChnReg->value |= (u32)spi_write_read(0x00);
+ 129   3                  // // spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG);
+ 130   3                  // pChnReg->addr = spi_write_read(0x00);
+ 131   3                  // // SPISS = 1;
+ 132   3      
+ 133   3                  if (pChnReg->addr <= MAXAD7124CHNS)
+ 134   3                  {
+ 135   4                      fRes[pChnReg->addr] = (float)((pChnReg->value - 0x800000) >> setup[pChnReg->addr].pga) * B
+             -ipolarDivisor; ////»»Ëãºóµ¥Î»Îª¦¸£¬ÅÜÍêÐèÒª55us
+ 136   4                                                                                                                
+             -               // fRes[pChnReg->addr] = (float)((pChnReg->value - 0x800000) >> setup[pChnReg->addr].pga) * 2127 * Bipola
+             -rDivisor; //×èÖµÎ´×ª»¯ÎªÎÂ¶È£¬ÅÜÍêÐèÒª55us£¬
+ 137   4                      fKpfTemp[pChnReg->addr] = kalmanFilter(pKfp + pChnReg->addr, fRes[pChnReg->addr]);
+ 138   4                      if (fRes >= 100)
+ 139   4                      {
+ 140   5                          fTemp[pChnReg->addr] = 10 * Res2Temp_Pt100_ResLagrgerThan100(fKpfTemp[pChnReg->addr]);
+             - //BipolarDivisorÎªe-13£¬ÐèÒª800us
+ 141   5                      }
+ 142   4                      else
+ 143   4                      {
+ 144   5                          fTemp[pChnReg->addr] = 10 * Res2Temp_Pt100_ResLessThan100(fKpfTemp[pChnReg->addr]); //
+             -BipolarDivisorÎªe-13£¬ÐèÒª800us
+ 145   5                      }
+ 146   4                      chnValues[pChnReg->addr] = (int)(fTemp[pChnReg->addr]); //5us
+ 147   4                  }
+ 148   3                  // psw2_st = P_SW2;
+ 149   3                  // P_SW2 |= 0x80;
+ 150   3                  // P1INTE = 0x01;
+ 151   3                  // P_SW2 = psw2_st;
+ 152   3                  // delay_X_ms(5000);
+ 153   3                  // spi_write_read(AD7124_COMM_REG_RD | AD7124_ERR_REG);
+ 154   3                  // spi_write_read(0xff);
+ 155   3                  // spi_write_read(0xff);
+ 156   3                  // spi_write_read(0xff);
+ 157   3                  // delay_X_ms(5000);
+ 158   3              }
+ 159   2      
+ 160   2              if (dacFlag) //Ñ­»·ÏÔÊ¾¸÷Í¨µÀ£¬Êµ¼Ê²»ÐèÒª
+ 161   2              {
+ 162   3                  DAC((u16)(5 * (fKpfTemp[dacChn] + 200))); //ºÄÊ±1ms
+ 163   3                  // UARTSendByte(UART(1), dacChn);
+ 164   3                  // DAC((u16)(5 * (fKpfTemp[0] + 200))); //ºÄÊ±1ms
+ 165   3                  // DAC(0); //ºÄÊ±1ms
+ 166   3              }
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 4   
+
+ 167   2              if (GetQueueLength(&sq))
+ 168   2              {
+ 169   3                  ModbusDataParse(); //ºÄÊ±2ms
+ 170   3              }
+ 171   2              WDT_Clear();
+ 172   2      
+ 173   2              // UARTSendByte(UART(1), setup[0].offset >> 16 & 0xff);
+ 174   2              // UARTSendByte(UART(1), setup[0].offset >> 8 & 0xff);
+ 175   2              // UARTSendByte(UART(1), setup[0].offset & 0xff);
+ 176   2              // UARTSendByte(UART(1), 0xff);
+ 177   2              // UARTSendByte(UART(1), setup[0].gain >> 16 & 0xff);
+ 178   2              // UARTSendByte(UART(1), setup[0].gain >> 8 & 0xff);
+ 179   2              // UARTSendByte(UART(1), setup[0].gain & 0xff);
+ 180   2              // UARTSendByte(UART(1), 0xff);
+ 181   2              // UARTSendByte(UART(1), 0xff);
+ 182   2          }
+ 183   1      }
+ 184          void SysInit(void)
+ 185          {
+ 186   1      
+ 187   1          u8 i = 0; //³õÊ¼»¯chn£¬setupµÈ
+ 188   1      
+ 189   1          IO_init();
+ 190   1      
+ 191   1          QueueInit(&sq);
+ 192   1          QueueInit(&nDataCntSq);
+ 193   1          SpiInit(); //initial SPI
+ 194   1      
+ 195   1          // P_SW2 = 0x80;
+ 196   1          // CKSEL = 0x00;   //Ñ¡ÔñÄÚ²¿IRC£»ÈçÑ¡ÔñÍâ²¿Ê±ÖÓ£¬ÐèÒªµÈ´ýÍâ²¿Ê±ÖÓÎÈ¶¨¡£
+ 197   1          // CLKDIV = 0x00;  //Ê±ÖÓ²»·ÖÆµ
+ 198   1          // MCLKOCR = 0x82; //ÏµÍ³Ê±ÖÓÊä³ö
+ 199   1          // P_SW2 = 0x00;
+ 200   1      
+ 201   1          // IE2 |= ESPI;
+ 202   1      
+ 203   1          for (i = 0; i < MAXAD7124CHNS; i++)
+ 204   1          {
+ 205   2              chn[i] = AD7124_8_ChannelPreConfig(AD7124_CH0_MAP_REG + i, AD7124_CH_MAP_REG_CH_ENABLE, AD7124_CH_
+             -MAP_REG_SETUP(i), AD7124_CH_MAP_REG_AINP(i + 1), AD7124_CH_MAP_REG_AINM(i)); //¶Ë¿Ú´ÓÐ¡¶Ë¿ªÊ¼ÅäÖÃ
+ 206   2          }
+ 207   1      
+ 208   1          for (i = 0; i < MAXAD7124SETUPS; i++)
+ 209   1          {
+ 210   2              setup[i] = AD7124_8_SetupPreConfig(AD7124_CFG0_REG + i, AD7124_CFG_REG_BIPOLAR, AD7124_CFG_REG_BUR
+             -NOUT(0), AD7124_CFG_REG_REF_BUFP, AD7124_CFG_REG_REF_BUFM, AD7124_CFG_REG_AIN_BUFP, AD7124_CFG_REG_AIN_BUFM, AD7124_CFG_
+             -REG_REF_SEL(0), AD7124_CFG_REG_PGA(4),
+ 211   2                                                 AD7124_FILT0_REG + i, AD7124_FILT_REG_FILTER(0), AD7124_FILT_RE
+             -G_REJ60, AD7124_FILT_REG_POST_FILTER(0), AD7124_FILT_REG_SINGLE_CYCLE, AD7124_FILT_REG_FS(480),
+ 212   2                                                 AD7124_OFFS0_REG + i, 0x800000,
+ 213   2                                                 AD7124_GAIN0_REG + i, 0x5fffff);
+ 214   2          }
+ 215   1      
+ 216   1          adcControl = AD7124_8_AdcControlPreConfig(AD7124_ADC_CTRL_REG, AD7124_ADC_CTRL_REG_DOUT_RDY_DEL, !AD71
+             -24_ADC_CTRL_REG_CONT_READ, AD7124_ADC_CTRL_REG_DATA_STATUS, !AD7124_ADC_CTRL_REG_CS_EN, !AD7124_ADC_CTRL_REG_REF_EN, AD7
+             -124_ADC_CTRL_REG_POWER_MODE(3), AD7124_ADC_CTRL_REG_MODE(0), AD7124_ADC_CTRL_REG_CLK_SEL(0));
+ 217   1          //ioÅäÖÃÓëµçÂ·Í¼Ïà¹Ø
+ 218   1          ad7124_8_io = AD7124_8_ioPreConfig(!AD7124_8_IO_CTRL1_REG_GPIO_DAT1 | !AD7124_8_IO_CTRL1_REG_GPIO_DAT2
+             - | !AD7124_8_IO_CTRL1_REG_GPIO_DAT3 | !AD7124_8_IO_CTRL1_REG_GPIO_DAT4,
+ 219   1                                             !AD7124_8_IO_CTRL1_REG_GPIO_CTRL1 | !AD7124_8_IO_CTRL1_REG_GPIO_CTR
+             -L2 | !AD7124_8_IO_CTRL1_REG_GPIO_CTRL3 | !AD7124_8_IO_CTRL1_REG_GPIO_CTRL4,
+ 220   1                                             AD7124_IO_CTRL1_REG_PDSW, AD7124_IO_CTRL1_REG_IOUT1(4) | AD7124_IO_
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 5   
+
+             -CTRL1_REG_IOUT0(4),
+ 221   1                                             AD7124_IO_CTRL1_REG_IOUT_CH1(11) | AD7124_IO_CTRL1_REG_IOUT_CH0(8),
+ 222   1                                             !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS0 | !AD7124_8_IO_CTRL2_REG_GPIO_VB
+             -IAS1 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS2 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS3 |
+ 223   1                                                 !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS4 | !AD7124_8_IO_CTRL2_REG_GPI
+             -O_VBIAS5 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS6 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS7 |
+ 224   1                                                 !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS8 | !AD7124_8_IO_CTRL2_REG_GPI
+             -O_VBIAS9 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS10 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS11 |
+ 225   1                                                 !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS12 | !AD7124_8_IO_CTRL2_REG_GP
+             -IO_VBIAS13 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS14 | !AD7124_8_IO_CTRL2_REG_GPIO_VBIAS15);
+ 226   1      
+ 227   1          SPISS = 1;
+ 228   1          delay_X_ms(10);
+ 229   1          SPISS = 0;
+ 230   1          delay_X_ms(10);
+ 231   1      
+ 232   1          // EA = 1; //Ê¹ÓÃspiÐèÒª¿ª£¬ÓÃÍê¼´¹Ø¡£
+ 233   1          delay_X_us(50);
+ 234   1      
+ 235   1          for (i = 0; i < 64; i++)
+ 236   1          {
+ 237   2              spi_write_read(0xff);
+ 238   2          }
+ 239   1      
+ 240   1          spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG); //ÇåPOR_FLAG±êÖ¾Î»
+ 241   1          spi_write_read(0xff);
+ 242   1          delay_X_ms(30);
+ 243   1      
+ 244   1          //AD7124_8_init_Setup()Î´ÅäÖÃgainºÍoffset£¬´Ë´¦ÅäÖÃ
+ 245   1          //Ê§µ÷¼Ä´æÆ÷Ð´ÈëÊ±£¬±ØÐë±£Ö¤ADC´¦ÓÚ´ý»ú»ò¿ÕÏÐ
+ 246   1          spi_write_read(AD7124_COMM_REG_WR | AD7124_ADC_CTRL_REG);
+ 247   1          spi_write_read(0x10);
+ 248   1          spi_write_read(AD7124_ADC_CTRL_REG_POWER_MODE(1) | AD7124_ADC_CTRL_REG_MODE(4));
+ 249   1          delay_X_ms(30);
+ 250   1      
+ 251   1          spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG); //¿ÕÏÐºó£¬ÇåPOR_FLAG±êÖ¾Î»
+ 252   1          spi_write_read(0xff);
+ 253   1          for (i = 0; i < MAXAD7124CHNS; i++)
+ 254   1          {
+ 255   2              if (setup[i].pga >= 1) //ÔöÒæ¸Ä±äÐèÐ£×¼£¬Ä¬ÈÏÔöÒæÎª1
+ 256   2              {
+ 257   3                  InternalFullScaleCalibrate(&setup[i]);
+ 258   3                  spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG); //Ð£×¼ºó£¬ÇåPOR_FLAG±êÖ¾Î»
+ 259   3                  spi_write_read(0xff);
+ 260   3              }
+ 261   2              InternalZeroScaleCalibrate(&setup[i]);
+ 262   2              spi_write_read(AD7124_COMM_REG_RD | AD7124_COMM_REG); //Ð£×¼ºó£¬ÇåPOR_FLAG±êÖ¾Î»
+ 263   2              spi_write_read(0xff);
+ 264   2              delay_X_ms(30);
+ 265   2          }
+ 266   1      
+ 267   1          for (i = 0; i < MAXAD7124CHNS; i++)
+ 268   1          {
+ 269   2              AD7124_8_init_SingleChannelConfiguraton(chn[i]);
+ 270   2              delay_X_ms(30);
+ 271   2              AD7124_8_init_Setup(setup[i]);
+ 272   2              delay_X_ms(30);
+ 273   2          }
+ 274   1      
+ 275   1          Ad7124_8_init_io(ad7124_8_io);
+ 276   1          delay_X_ms(30);
+ 277   1          AD7124_8_init_AdcControl(adcControl);
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 6   
+
+ 278   1          delay_X_ms(30);
+ 279   1      
+ 280   1          //Ê¹ÄÜINT1ÖÐ¶Ï
+ 281   1          // IT1 = 1;
+ 282   1          // EX1 = 1;
+ 283   1          INT_init(1, 0); //¹Ü½ÅÓëDOUTÖØºÏ
+ 284   1      
+ 285   1          //Ê¹ÄÜINT3ÖÐ¶Ï
+ 286   1          // INT_CLKO = EX3;
+ 287   1      
+ 288   1          // //Ê¹ÄÜP1.6¿ÚÖÐ¶Ï
+ 289   1          // P_SW2 |= 0x80;
+ 290   1          // P1IM0 = 0x00;
+ 291   1          // P1IM1 = 0xff;
+ 292   1          // P1INTE = 0x00;
+ 293   1          // P_SW2 &= ~0x80;
+ 294   1          /************************************/
+ 295   1          EEPROMInit();
+ 296   1          /************************************/
+ 297   1          TimerInit();
+ 298   1          //¿´ÃÅ¹·
+ 299   1          wdt->WDT_Enable = ENABLE;
+ 300   1          wdt->WDT_IDLE_Mode = 1;
+ 301   1          wdt->WDT_PS = D_WDT_SCALE_256;
+ 302   1          WDT_Inilize(wdt);
+ 303   1          EA = 1;
+ 304   1          //Í³Ò»ÔÚÖ÷º¯ÊýÀï¿ªÖÐ¶Ï
+ 305   1      }
+ 306          
+ 307          void TimerInit(void)
+ 308          {
+ 309   1          Timer1_init(DISABLE, BAUD, 0x00, true, DISABLE);
+ 310   1          Timer2_init(ENABLE, 598, 0x00, true, DISABLE);           //15ms,15ms*100*2 =3s dac
+ 311   1          Timer3_init(ENABLE, Timer_xUs_yT(10, 1), true, DISABLE); //ÓÃÀ´²âT3.5ºÍT1.5£¬Timer3ÓÃ1T£¬12TÔÚ20usÒÔÏÂ
+             -Îó²î¡¢1TÔÚ5usÒÔÏÂÎó²î´ó;
+ 312   1          Timer4_init(ENABLE, 9550, true, DISABLE);                //Ô¼625usÒ»´ÎÖÐ¶Ï£¬ÓÃÀ´²É¼¯adcÊý¾Ý
+ 313   1          UARTInit(UART(1), Timer(1), S1_IO_P30P31, ENABLE);       //initial UART¡£
+ 314   1      }
+ 315          
+ 316          //3¸ö²ÎÊý£º1.AD7124ÊÖ²áÄ¬ÈÏ²ÎÊý£¨²»Ð´Ò²ÐÐ£¬codeÀïÓÐad7124Regs£©£»2.Éè±¸³ö³§µÄAD7124Ð£×¼²ÎÊý£»3.³ÌÐòÔËÐÐÊ±Ð
+             -£×¼µÄAD7124²ÎÊý
+ 317          //ÔÚÉÕÐ´³ÌÐòÊ±£¬ÐèÒªÑ¡Ôñ2¸öÉÈÇø£¨1k£©
+ 318          //Ê×ÏÈÅÐ¶ÏÉÈÇø1ÓÐÎÞÉè±¸³ö³§µÄAD7124²ÎÊý£¬Ã»ÓÐÔòÐ´Èë£»
+ 319          void EEPROMInit(void)
+ 320          {
+ 321   1          u8 nRegs = 0;          //±£´æµÄ¼Ä´æÆ÷¸öÊý
+ 322   1          u16 regShift = 0x6400; //ÉÈÇøÆ«ÒÆ
+ 323   1          u8 eeDataBuff[3] = {0};
+ 324   1      
+ 325   1          IapRead(regShift, eeDataBuff, 3);
+ 326   1          // eeDataBuff[0] = IapRead(regShift++);
+ 327   1          // eeDataBuff[1] = IapRead(regShift++);
+ 328   1          // eeDataBuff[2] = IapRead(regShift);
+ 329   1          // regShift = 0x0000;
+ 330   1          //¿Õµ¥Æ¬»úÔËÐÐ
+ 331   1          if ((eeDataBuff[0] != 0x00) || (eeDataBuff[1] != 0x00) || (eeDataBuff[2] != 0x80))
+ 332   1          {
+ 333   2              IapErase(regShift); //²Á³ýµÚÒ»¸öÉÈÇø
+ 334   2      
+ 335   2              for (nRegs = 0; nRegs < 8; nRegs++)
+ 336   2              {
+ 337   3                  eeDataBuff[0] = ad7124Regs[AD7124_Offset_0 + nRegs].value & 0xff;
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 7   
+
+ 338   3                  eeDataBuff[1] = ad7124Regs[AD7124_Offset_0 + nRegs].value >> 8 & 0xff;
+ 339   3                  eeDataBuff[2] = ad7124Regs[AD7124_Offset_0 + nRegs].value >> 16 & 0xff;
+ 340   3                  // IapWrite(0x0000 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 341   3                  // IapRead(0x0000 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 342   3                  // IapWrite(0x0000 + nRegs * 3 + regShift, eeDataBuff[0]);
+ 343   3                  // IapWrite(0x0000 + nRegs * 3 + regShift + 1, eeDataBuff[1]);
+ 344   3                  // IapWrite(0x0000 + nRegs * 3 + regShift + 2, eeDataBuff[2]);
+ 345   3                  // memset(eeDataBuff, 0xff, 3);
+ 346   3                  // eeDataBuff[0] = IapRead(0x0000 + nRegs * 3 + regShift);
+ 347   3                  // eeDataBuff[1] = IapRead(0x0000 + nRegs * 3 + regShift + 1);
+ 348   3                  // eeDataBuff[2] = IapRead(0x0000 + nRegs * 3 + regShift + 2);
+ 349   3              }
+ 350   2              // memset(eeDataBuff, 0xff, 3);
+ 351   2              // IapRead(regShift + 0x0003, eeDataBuff, 3);
+ 352   2      
+ 353   2              for (nRegs = 0; nRegs < 8; nRegs++)
+ 354   2              {
+ 355   3                  eeDataBuff[0] = ad7124Regs[AD7124_Gain_0 + nRegs].value & 0xff;
+ 356   3                  eeDataBuff[1] = ad7124Regs[AD7124_Gain_0 + nRegs].value >> 8 & 0xff;
+ 357   3                  eeDataBuff[2] = ad7124Regs[AD7124_Gain_0 + nRegs].value >> 16 & 0xff;
+ 358   3                  // IapWrite(0x0018 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 359   3                  // IapRead(0x0018 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 360   3                  // IapWrite(0x0018 + nRegs * 3 + regShift, eeDataBuff[0]);
+ 361   3                  // IapWrite(0x0018 + nRegs * 3 + regShift + 1, eeDataBuff[1]);
+ 362   3                  // IapWrite(0x0018 + nRegs * 3 + regShift + 2, eeDataBuff[2]);
+ 363   3                  // memset(eeDataBuff, 0xff, 3);
+ 364   3                  // eeDataBuff[0] = IapRead(0x0018 + nRegs * 3 + regShift);
+ 365   3                  // eeDataBuff[1] = IapRead(0x0018 + nRegs * 3 + regShift + 1);
+ 366   3                  // eeDataBuff[2] = IapRead(0x0018 + nRegs * 3 + regShift + 2);
+ 367   3              }
+ 368   2              // memset(eeDataBuff, 0xff, 3);
+ 369   2              // IapRead(regShift + 0x0021, eeDataBuff, 3);
+ 370   2          }
+ 371   1          //Ð´ÈëÉè±¸³ö³§Ð£×¼²ÎÊý
+ 372   1          regShift += 0x0200;
+ 373   1          IapErase(regShift); //²Á³ýµÚ2¸öÉÈÇø
+ 374   1          // memset(eeDataBuff, 0xff, 3);
+ 375   1          // IapRead(0x6400, eeDataBuff, 3);
+ 376   1          // memset(eeDataBuff, 0xff, 3);
+ 377   1          // IapRead(0x6620, eeDataBuff, 3);
+ 378   1          for (nRegs = 0; nRegs < 8; nRegs++)
+ 379   1          {
+ 380   2              eeDataBuff[0] = setup[nRegs].offset & 0xff;
+ 381   2              eeDataBuff[1] = setup[nRegs].offset >> 8 & 0xff;
+ 382   2              eeDataBuff[2] = setup[nRegs].offset >> 16 & 0xff;
+ 383   2              // IapWrite(0x0000 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 384   2              // IapRead(0x0000 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 385   2              // IapWrite(0x0000 + nRegs * 3 + regShift, eeDataBuff[0]);
+ 386   2              // IapWrite(0x0000 + nRegs * 3 + regShift + 1, eeDataBuff[1]);
+ 387   2              // IapWrite(0x0000 + nRegs * 3 + regShift + 2, eeDataBuff[2]);
+ 388   2              // memset(eeDataBuff, 0xff, 3);
+ 389   2              // eeDataBuff[0] = IapRead(0x0000 + nRegs * 3 + regShift);
+ 390   2              // eeDataBuff[1] = IapRead(0x0000 + nRegs * 3 + regShift + 1);
+ 391   2              // eeDataBuff[2] = IapRead(0x0000 + nRegs * 3 + regShift + 2);
+ 392   2          }
+ 393   1          // memset(eeDataBuff, 0xff, 3);
+ 394   1          // IapRead(regShift + 0x0203, eeDataBuff, 3);
+ 395   1      
+ 396   1          for (nRegs = 0; nRegs < 8; nRegs++)
+ 397   1          {
+ 398   2              eeDataBuff[0] = setup[nRegs].gain & 0xff;
+ 399   2              eeDataBuff[1] = setup[nRegs].gain >> 8 & 0xff;
+C51 COMPILER V9.54   MAIN                                                                  03/12/2022 18:23:29 PAGE 8   
+
+ 400   2              eeDataBuff[2] = setup[nRegs].gain >> 16 & 0xff;
+ 401   2              // IapWrite(0x0018 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 402   2              // IapRead(0x0018 + nRegs * 3 + regShift, eeDataBuff, 3);
+ 403   2              // IapWrite(0x0018 + nRegs * 3 + regShift, eeDataBuff[0]);
+ 404   2              // IapWrite(0x0018 + nRegs * 3 + regShift + 1, eeDataBuff[1]);
+ 405   2              // IapWrite(0x0018 + nRegs * 3 + regShift + 2, eeDataBuff[2]);
+ 406   2              // memset(eeDataBuff, 0xff, 3);
+ 407   2              // eeDataBuff[0] = IapRead(0x0018 + nRegs * 3 + regShift);
+ 408   2              // eeDataBuff[1] = IapRead(0x0018 + nRegs * 3 + regShift + 1);
+ 409   2              // eeDataBuff[2] = IapRead(0x0018 + nRegs * 3 + regShift + 2);
+ 410   2          }
+ 411   1          // memset(eeDataBuff, 0xff, 3);
+ 412   1          // IapRead(regShift + 0x0221, eeDataBuff, 3);
+ 413   1          // // IapRead(0x0000, eeDataBuff, 3);
+ 414   1          // // IapRead(0x0200, eeDataBuff, 3);
+ 415   1          // memset(eeDataBuff, 0xff, 3);
+ 416   1          // IapRead(0x6400, eeDataBuff, 3);
+ 417   1          // memset(eeDataBuff, 0xff, 3);
+ 418   1          // IapRead(0x6620, eeDataBuff, 3);
+ 419   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3773    ----
+   CONSTANT SIZE    =     35    ----
+   XDATA SIZE       =   1365    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

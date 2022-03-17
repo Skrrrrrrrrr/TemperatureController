@@ -1,0 +1,750 @@
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MODBUS
+OBJECT MODULE PLACED IN ..\Obj\modbus.obj
+COMPILER INVOKED BY: D:\Program Files (x86)\Keil\Keil_V533\C51\BIN\C51.EXE modbus.c LARGE OPTIMIZE(0,SPEED) BROWSE INCDI
+                    -R(..\Sys;..\User;..\Hardware\ADC;..\Hardware\EEPROM;..\Hardware\GPIO;..\Hardware\INT;..\Hardware\PCA;..\Hardware\PIT;..\
+                    -Hardware\PWM;..\Hardware\UART;..\HARDWARE\TIMER;..\Peripheral\ad7124_noos;..\Peripheral;..\Hardware\SPI;..\HARDWARE\WDT)
+                    - DEBUG OBJECTEXTEND PRINT(.\Listings\modbus.lst) TABS(2) OBJECT(..\Obj\modbus.obj)
+
+line level    source
+
+   1          #include "modbus.h"
+   2          
+   3          u8 txBuffer[MAXMODBUS_TX_DATALENGTH]; //发送的数据
+   4          u16 modbusDataGapCnt = 0;       //modbus字符及帧间隔计数器,10us计数1次
+   5          
+   6          extern u8 localAddr;
+   7          extern u8 code mac[128];
+   8          extern u8 code version[128];
+   9          extern SqQueue sq;       //存储大量到来数据
+  10          extern SqQueue nDataCntSq; //存储每次到来的有效数据（经过CRC），含CRC的2字节数量
+  11          extern u16 chnValues[MAXAD7124CHNS];
+  12          extern u16 inputRegValues[MAXINPUTREGNUM]; //Modbus写入测试
+  13          extern u8 coilValues[MAXCOILNUM];      //离散量数组，一个字节存一个状态
+  14          
+  15          //////////////////功能码数组///////////////////////
+  16          
+  17          // u32 code OffsetRegs[17] = {
+  18          //  0, 0, 10000, 40000, 30000, 10000, 40000, 0,
+  19          //  0, 0, 0, 0, 0, 0, 0, 10000,
+  20          //  40000};
+  21          
+  22          //////////////////////////////////////////
+  23          
+  24          /**************************************
+  25          //函数功能：解析上位机发过来的modbus数据帧
+  26          //函数返回值：无
+  27          //函数形参：无
+  28          //时间：2020/06/22
+  29          //备注：无
+  30          *************************************/
+  31          void ModbusDataParse(void)
+  32          {
+  33   1        ModbusData modbusData;
+  34   1      
+  35   1        if (ModbusDataCheck(&modbusData) == 0)
+  36   1        {
+  37   2          switch (modbusData.functionCode)
+  38   2          {
+  39   3          case ReadCoilSta:
+  40   3          case ReadInputDis:
+  41   3            ReadCoils(&modbusData);
+  42   3            break;
+  43   3          case ReadHoldReg:
+  44   3            ReadHoldRegs(&modbusData);
+  45   3            break;
+  46   3          case ReadInputReg:
+  47   3            ReadInputRegs(&modbusData);
+  48   3            break;
+  49   3          case ForceSingleCoil:
+  50   3            WriteSingleCoil(&modbusData);
+  51   3            break;
+  52   3          case WriteSinReg:
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 2   
+
+  53   3            WriteSingleReg(&modbusData);
+  54   3            break;
+  55   3          case ForceMulCoils:
+  56   3            WriteMuilCoils(&modbusData);
+  57   3            break;
+  58   3          case WriteMulRegs:
+  59   3            WriteMuilRegs(&modbusData);
+  60   3            break;
+  61   3          default:
+  62   3            ErrorSend(UART(1), IS_INVALID_FUNCTION_CODE);
+  63   3            break;
+  64   3          }
+  65   2          memset(&modbusData, 0, sizeof(modbusData));
+  66   2        }
+  67   1      }
+  68          /**************************************
+  69          //函数功能：对上位机发来的帧进行判断
+  70          //函数返回值：无
+  71          //函数形参：pRxBytes：队列首数据帧，length：接收到的长度，pModbusData：modbusdata结
+             -构指针
+  72          //时间：2020/06/22
+  73          //备注：无
+  74          *************************************/
+  75          u8 ModbusDataCheck(ModbusData *pModbusData)
+  76          {
+  77   1        u16 validationCRC = 0;
+  78   1        u16 i = 0;
+  79   1      
+  80   1        u8 nByte = 0;
+  81   1        u8 *pNByte = &nByte; //u8不能满足多于256个数据值
+  82   1        u8 rxBytes[MAXMODBUSDATALENGTH];
+  83   1        u8 *pRxBytes = rxBytes; //存储队列拿出的数据帧，帧长度由DeQueue(nDataCntSq)控制
+  84   1        memset(rxBytes, 0, MAXMODBUSDATALENGTH);
+  85   1      
+  86   1        // pNByte = (u16)DeQueue(&nDataCntSq);
+  87   1        DeQueue(&nDataCntSq, &pNByte, 1);
+  88   1        if (nByte < 8) //防空指针
+  89   1        {
+  90   2          return 4;
+  91   2        }
+  92   1      
+  93   1        DeQueue(&sq, &pRxBytes, nByte);
+  94   1      
+  95   1        validationCRC = CRC16(pRxBytes, nByte - 2);
+  96   1      
+  97   1        if (validationCRC == (u16)(pRxBytes[nByte - 2] << 8 | pRxBytes[nByte - 1]))
+  98   1        {
+  99   2          pModbusData->addr = pRxBytes[0];
+ 100   2          pModbusData->functionCode = pRxBytes[1];
+ 101   2          if (pModbusData->addr == localAddr)
+ 102   2          {
+ 103   3            switch (pRxBytes[1])
+ 104   3            {
+ 105   4            case ReadCoilSta:
+ 106   4            case ReadInputDis:
+ 107   4            case ReadHoldReg:
+ 108   4            case ReadInputReg:
+ 109   4              pModbusData->startAddr = (u16)(pRxBytes[2] << 8 | pRxBytes[3]);
+ 110   4              pModbusData->dataLen = (u16)(pRxBytes[4] << 8 | pRxBytes[5]);
+ 111   4              break;
+ 112   4            case ForceSingleCoil:
+ 113   4            case WriteSinReg:
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 3   
+
+ 114   4              //01 05 00 00 ff 00 crc1 crc2  8byte
+ 115   4              //01 06 00 01 aa bb crc1 crc2  8byte
+ 116   4              pModbusData->dataLen = 2;
+ 117   4              pModbusData->nBytes = 1;
+ 118   4              pModbusData->startAddr = (u16)(pRxBytes[2] << 8 | pRxBytes[3]);
+ 119   4              pModbusData->dat[0] = (u16)(pRxBytes[4] << 8 | pRxBytes[5]);
+ 120   4              break;
+ 121   4            case WriteMulRegs:
+ 122   4              //01 10 00 13 00 02 04 aa aa bb bb crc1 crc ---- 7+len+2字节
+ 123   4              pModbusData->startAddr = (u16)(pRxBytes[2] << 8 | pRxBytes[3]);
+ 124   4              pModbusData->dataLen = (u16)(pRxBytes[4] << 8 | pRxBytes[5]);
+ 125   4              pModbusData->nBytes = pRxBytes[6];
+ 126   4              for (i = 0; i < pModbusData->dataLen; i++)
+ 127   4              {
+ 128   5                pModbusData->dat[i] = (u16)(pRxBytes[7 + 2 * i] << 8 | pRxBytes[8 + 2 * i]);
+ 129   5              }
+ 130   4              break;
+ 131   4            case ForceMulCoils:
+ 132   4              pModbusData->startAddr = (u16)(pRxBytes[2] << 8 | pRxBytes[3]);
+ 133   4              pModbusData->dataLen = (u16)(pRxBytes[4] << 8 | pRxBytes[5]);
+ 134   4              pModbusData->nBytes = (pModbusData->dataLen / 8);
+ 135   4              if ((pModbusData->dataLen % 8) != 0)
+ 136   4              {
+ 137   5                pModbusData->nBytes++;
+ 138   5              }
+ 139   4              for (i = 0; i < pModbusData->nBytes; i++)
+ 140   4              {
+ 141   5                pModbusData->dat[i] = (u16)pRxBytes[7 + i];
+ 142   5              }
+ 143   4              break;
+ 144   4            default:
+ 145   4              ErrorSend(UART(1), IS_INVALID_FUNCTION_CODE);
+ 146   4              break;
+ 147   4            }
+ 148   3            return 0; //success
+ 149   3          }
+ 150   2          else
+ 151   2          {
+ 152   3            return 0xff;
+ 153   3          }
+ 154   2        }
+ 155   1        return 0xff;
+ 156   1      }
+ 157          
+ 158          /**************************************
+ 159          //函数功能：Modbus异常码发送
+ 160          //函数返回值：无
+ 161          //函数形参：Cmd：命令码，Err：错误类型
+ 162          //时间：2020/06/22
+ 163          //备注：无
+ 164          *************************************/
+ 165          void ErrorSend(u8 Cmd, u8 errorCode)
+ 166          {
+ 167   1        u16 validationCRC = 0;
+ 168   1      
+ 169   1        txBuffer[0] = localAddr;
+ 170   1        txBuffer[1] = 0x80 + Cmd;
+ 171   1        txBuffer[2] = errorCode;
+ 172   1        validationCRC = CRC16(txBuffer, 3);
+ 173   1        txBuffer[3] = (u8)((validationCRC >> 8) & 0xff);
+ 174   1        txBuffer[4] = (u8)(validationCRC & 0xff);
+ 175   1        UARTSendString(UART(1), txBuffer, 5);
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 4   
+
+ 176   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 177   1      }
+ 178          
+ 179          /**************************************
+ 180          //函数功能：Modbus读版本号
+ 181          //函数返回值：无
+ 182          //函数形参：pModbusData
+ 183          //时间：2020/06/22
+ 184          //备注：无
+ 185          *************************************/
+ 186          void ModbusReadVersion(ModbusData *pModbusData)
+ 187          {
+ 188   1        u16 validationCRC = 0;
+ 189   1        u16 indexSend = 0;
+ 190   1      
+ 191   1        txBuffer[indexSend++] = pModbusData->addr;
+ 192   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 193   1        txBuffer[indexSend++] = pModbusData->dataLen * 2;
+ 194   1      
+ 195   1        memcpy((char *)txBuffer + indexSend, version, pModbusData->dataLen * 2);
+ 196   1        indexSend += pModbusData->dataLen * 2;
+ 197   1        validationCRC = CRC16(txBuffer, indexSend);
+ 198   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 199   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 200   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 201   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 202   1      }
+ 203          
+ 204          void ModbusReadMac(ModbusData *pModbusData)
+ 205          {
+ 206   1        u16 validationCRC = 0;
+ 207   1        u16 indexSend = 0;
+ 208   1      
+ 209   1        txBuffer[indexSend++] = pModbusData->addr;
+ 210   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 211   1        txBuffer[indexSend++] = pModbusData->dataLen * 2;
+ 212   1      
+ 213   1        memcpy((char *)txBuffer + indexSend, mac, pModbusData->dataLen * 2);
+ 214   1        indexSend += pModbusData->dataLen * 2;
+ 215   1        validationCRC = CRC16(txBuffer, indexSend);
+ 216   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 217   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 218   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 219   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 220   1      }
+ 221          
+ 222          /**************************************
+ 223          //函数功能：对上位机01/02命令处理
+ 224          //函数返回值：无
+ 225          //函数形参：无
+ 226          //时间：2020/06/22
+ 227          //备注：无
+ 228          *************************************/
+ 229          void ReadCoils(ModbusData *pModbusData)
+ 230          {
+ 231   1        u16 validationCRC = 0;
+ 232   1        u16 i = 0;
+ 233   1        u16 j = 0;
+ 234   1        //u16 nOffset = 0;
+ 235   1        //u16 uStatus[16] = {0};
+ 236   1        u16 indexSend = 0;
+ 237   1        u8 coilValue = 0;
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 5   
+
+ 238   1        u16 coilAddr = 0;
+ 239   1        bool readFlag = false;
+ 240   1      
+ 241   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 242   1      
+ 243   1        if (!((pModbusData->dataLen >= 0x0001) && (pModbusData->dataLen <= 0x07D0))) //非法数据值
+ 244   1        {
+ 245   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_VALUE);
+ 246   2          return;
+ 247   2        }
+ 248   1        if ((pModbusData->startAddr < Coilx(0)) || (pModbusData->startAddr > Coilx(MAXCOILNUM)) || pModbusData->d
+             -ataLen > Coilx(MAXCOILNUM) - Coilx(0) + 1 || (pModbusData->startAddr + pModbusData->dataLen) > Coilx(MAXCOILNUM) + 1) //
+             -超出范围
+ 249   1        {
+ 250   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 251   2          return;
+ 252   2        }
+ 253   1      
+ 254   1        coilAddr = pModbusData->startAddr;
+ 255   1        txBuffer[0] = pModbusData->addr;
+ 256   1        txBuffer[1] = pModbusData->functionCode;
+ 257   1        indexSend = pModbusData->dataLen >> 3; //字节数，开关量8位组成一个字节
+ 258   1      
+ 259   1        if (pModbusData->dataLen % 8)
+ 260   1        { //有余数字节数加1
+ 261   2          indexSend++;
+ 262   2        }
+ 263   1        txBuffer[2] = (u8)indexSend;
+ 264   1        //小端模式，低位存放在低地址
+ 265   1        for (i = 0; i < indexSend; i++)
+ 266   1        {
+ 267   2          txBuffer[3 + i] = 0x00;
+ 268   2      
+ 269   2          for (j = 0; j < 8; j++)
+ 270   2          {
+ 271   3            //读线圈状态
+ 272   3            coilValue = GetCoilData(coilAddr, ReadCoilSta);
+ 273   3            txBuffer[3 + i] |= coilValue << j;
+ 274   3            coilAddr++;
+ 275   3            if (coilAddr >= pModbusData->dataLen + pModbusData->startAddr) //屏蔽indexSend++的影响
+ 276   3            {
+ 277   4              readFlag = true;
+ 278   4              break;
+ 279   4            }
+ 280   3          }
+ 281   2          if (readFlag)
+ 282   2          {
+ 283   3            break;
+ 284   3          }
+ 285   2        }
+ 286   1      
+ 287   1        validationCRC = CRC16(txBuffer, indexSend + 3);
+ 288   1        txBuffer[indexSend + 3] = (u8)((validationCRC >> 8) & 0xff);
+ 289   1        txBuffer[indexSend + 4] = (u8)(validationCRC & 0xff);
+ 290   1        UARTSendString(UART(1), txBuffer, indexSend + 5);
+ 291   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 292   1      }
+ 293          
+ 294          /**************************************
+ 295          //函数功能：对上位机0命令处理
+ 296          //函数返回值：无
+ 297          //函数形参：无
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 6   
+
+ 298          //时间：2020/06/22
+ 299          //备注：无
+ 300          *************************************/
+ 301          void ReadHoldRegs(ModbusData *pModbusData)
+ 302          {
+ 303   1      
+ 304   1        u16 validationCRC = 0;
+ 305   1        u16 i = 0;
+ 306   1        // u16 regAddr = 0;
+ 307   1        u16 regValue = 0;
+ 308   1        u16 indexSend = 0;
+ 309   1        u8 readBuff[HoldRegNUm];
+ 310   1        memset(readBuff, 0, HoldRegNUm);
+ 311   1      
+ 312   1        if (!((pModbusData->dataLen >= 0x0001) && (pModbusData->dataLen <= 0x07D0))) //非法数据值
+ 313   1        {
+ 314   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_VALUE);
+ 315   2          return;
+ 316   2        }
+ 317   1        if (pModbusData->startAddr == VersionReg && pModbusData->dataLen != 0)
+ 318   1        {
+ 319   2          ModbusReadVersion(pModbusData);
+ 320   2          return;
+ 321   2        }
+ 322   1        if (pModbusData->startAddr == MacReg && pModbusData->dataLen != 0)
+ 323   1        {
+ 324   2          ModbusReadMac(pModbusData);
+ 325   2          return;
+ 326   2        }
+ 327   1        if ((pModbusData->startAddr > HoldxReg(HoldRegNUm)) || (pModbusData->startAddr < HoldxReg(0)) || pModbusD
+             -ata->dataLen > MAXAD7124CHNS || (pModbusData->startAddr + pModbusData->dataLen) > HoldxReg(HoldRegNUm)) //超出范围
+ 328   1        {
+ 329   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 330   2          return;
+ 331   2        }
+ 332   1        for (i = 0; i < pModbusData->dataLen; i++)
+ 333   1        {
+ 334   2          regValue = GetRegData(pModbusData->startAddr + i, ReadHoldReg);
+ 335   2          // readBuff[2 * i] = chnValues[(u8)(pModbusData->startAddr + i)] >> 8 & 0xFF;
+ 336   2          // readBuff[2 * i + 1] = chnValues[(u8)(pModbusData->startAddr + i)] & 0xFF;
+ 337   2          readBuff[2 * i] = regValue >> 8 & 0xFF;
+ 338   2          readBuff[2 * i + 1] = regValue & 0xFF;
+ 339   2        }
+ 340   1        txBuffer[indexSend++] = pModbusData->addr;
+ 341   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 342   1        txBuffer[indexSend++] = pModbusData->dataLen * 2;
+ 343   1        memcpy(&txBuffer[indexSend], readBuff, (2 * i));
+ 344   1        indexSend += 2 * i;
+ 345   1        validationCRC = CRC16(txBuffer, indexSend);
+ 346   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 347   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 348   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 349   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 350   1      }
+ 351          
+ 352          /**************************************
+ 353          //函数功能：对上位机04命令处理
+ 354          //函数返回值：无
+ 355          //函数形参：无
+ 356          //时间：2020/06/22
+ 357          //备注：无
+ 358          *************************************/
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 7   
+
+ 359          void ReadInputRegs(ModbusData *pModbusData)
+ 360          {
+ 361   1      
+ 362   1        u16 validationCRC = 0;
+ 363   1        u16 i = 0;
+ 364   1        // u16 regAddr = 0;
+ 365   1        u16 regValue = 0;
+ 366   1        u16 indexSend = 0;
+ 367   1        u8 readBuff[InputRegNum];
+ 368   1        memset(readBuff, 0, InputRegNum);
+ 369   1      
+ 370   1        if (!((pModbusData->dataLen >= 0x0001) && (pModbusData->dataLen <= 0x07D0))) //非法数据值
+ 371   1        {
+ 372   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_VALUE);
+ 373   2          return;
+ 374   2        }
+ 375   1        if (pModbusData->startAddr == VersionReg && pModbusData->dataLen != 0)
+ 376   1        {
+ 377   2          ModbusReadVersion(pModbusData);
+ 378   2          return;
+ 379   2        }
+ 380   1        if (pModbusData->startAddr == MacReg && pModbusData->dataLen != 0)
+ 381   1        {
+ 382   2          ModbusReadMac(pModbusData);
+ 383   2          return;
+ 384   2        }
+ 385   1        if ((pModbusData->startAddr > InputRegx(InputRegNum)) || (pModbusData->startAddr < InputRegx(0)) || pModb
+             -usData->dataLen > InputRegNum || (pModbusData->startAddr + pModbusData->dataLen) > InputRegx(InputRegNum)) //超出范�
+             -�
+ 386   1        {
+ 387   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 388   2          return;
+ 389   2        }
+ 390   1        for (i = 0; i < pModbusData->dataLen; i++)
+ 391   1        {
+ 392   2          regValue = GetRegData(pModbusData->startAddr + i, ReadInputReg);
+ 393   2          // readBuff[2 * i] = chnValues[(u8)(pModbusData->startAddr + i)] >> 8 & 0xFF;
+ 394   2          // readBuff[2 * i + 1] = chnValues[(u8)(pModbusData->startAddr + i)] & 0xFF;
+ 395   2          readBuff[2 * i] = regValue >> 8 & 0xFF;
+ 396   2          readBuff[2 * i + 1] = regValue & 0xFF;
+ 397   2        }
+ 398   1        txBuffer[indexSend++] = pModbusData->addr;
+ 399   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 400   1        txBuffer[indexSend++] = pModbusData->dataLen * 2;
+ 401   1        memcpy(&txBuffer[indexSend], readBuff, (2 * i));
+ 402   1        indexSend += 2 * i;
+ 403   1        validationCRC = CRC16(txBuffer, indexSend);
+ 404   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 405   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 406   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 407   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 408   1      }
+ 409          /**************************************
+ 410          //函数功能：对上位机0x05写单个线圈处理
+ 411          //函数返回值：无
+ 412          //函数形参：无
+ 413          //时间：2020/06/22
+ 414          //备注：无
+ 415          *************************************/
+ 416          void WriteSingleCoil(ModbusData *pModbusData)
+ 417          {
+ 418   1        u16 validationCRC = 0;
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 8   
+
+ 419   1        u16 indexSend = 0;
+ 420   1        u8 coilValue = 0;
+ 421   1        // u16 coilAddr = 0;
+ 422   1        u16 coilStatus = 0;
+ 423   1      
+ 424   1        // coilAddr = pModbusData->startAddr;
+ 425   1        if (pModbusData->startAddr < Coilx(0) || pModbusData->startAddr > Coilx(MAXCOILNUM))
+ 426   1        {
+ 427   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 428   2          return;
+ 429   2        }
+ 430   1      
+ 431   1        coilStatus = pModbusData->dat[0];
+ 432   1        if (coilStatus == 0xFF00)
+ 433   1        {
+ 434   2          coilValue = 1;
+ 435   2        }
+ 436   1        else if (coilStatus == 0x0000)
+ 437   1        {
+ 438   2          coilValue = 0;
+ 439   2        }
+ 440   1        SetCoilData(pModbusData->startAddr, coilValue, ForceSingleCoil);
+ 441   1      
+ 442   1        txBuffer[indexSend++] = pModbusData->addr;
+ 443   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 444   1        txBuffer[indexSend++] = (u8)((pModbusData->startAddr >> 8) & 0xff);
+ 445   1        txBuffer[indexSend++] = (u8)(pModbusData->startAddr & 0xff);
+ 446   1        txBuffer[indexSend++] = (u8)((pModbusData->dat[0] >> 8) & 0xff);
+ 447   1        txBuffer[indexSend++] = (u8)(pModbusData->dat[0] & 0xff);
+ 448   1        validationCRC = CRC16(txBuffer, indexSend);
+ 449   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 450   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 451   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 452   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 453   1      }
+ 454          
+ 455          /**************************************
+ 456          //函数功能：对上位机0x0F写多个线圈处理
+ 457          //函数返回值：无
+ 458          //函数形参：无
+ 459          //时间：2020/06/22
+ 460          //备注：01 0F 10 03 00 0A 02 CD 01 61 9A
+ 461          //100A 1009 1008 1007 1006 1005 1004 1003
+ 462          //  1   1     0    0    1    1    0    1
+ 463          //  其余位补0         100C 100B
+ 464          //                  0    1
+ 465          *************************************/
+ 466          void WriteMuilCoils(ModbusData *pModbusData)
+ 467          {
+ 468   1        u16 validationCRC = 0;
+ 469   1        u16 i = 0;
+ 470   1        u16 j = 0;
+ 471   1        u16 indexSend = 0;
+ 472   1        u16 coilAddr = 0;
+ 473   1        u8 coilValue = 0;
+ 474   1        u8 nByte = 0;
+ 475   1        bool readFlag = false;
+ 476   1      
+ 477   1        coilAddr = pModbusData->startAddr;
+ 478   1        nByte = pModbusData->dataLen >> 3;
+ 479   1        if (pModbusData->dataLen % 8)
+ 480   1        {
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 9   
+
+ 481   2          nByte++;
+ 482   2        }
+ 483   1        if (coilAddr < Coilx(0) || coilAddr > Coilx(MAXCOILNUM) || pModbusData->dataLen > Coilx(MAXCOILNUM) - Coi
+             -lx(0) + 1 || (pModbusData->startAddr + pModbusData->dataLen) > Coilx(MAXCOILNUM) + 1)
+ 484   1        {
+ 485   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 486   2          return;
+ 487   2        }
+ 488   1        for (i = 0; i < nByte; i++)
+ 489   1        {
+ 490   2          for (j = 0; j < 8; j++)
+ 491   2          {
+ 492   3            coilValue = (pModbusData->dat[i] >> j) & 0x01;
+ 493   3            SetCoilData(coilAddr, coilValue, ForceMulCoils);
+ 494   3            coilAddr++;
+ 495   3            if (coilAddr >= pModbusData->dataLen + pModbusData->startAddr)
+ 496   3            {
+ 497   4              readFlag = true;
+ 498   4              break;
+ 499   4            }
+ 500   3          }
+ 501   2          if (readFlag)
+ 502   2          {
+ 503   3            break;
+ 504   3          }
+ 505   2        }
+ 506   1        txBuffer[indexSend++] = pModbusData->addr;
+ 507   1        txBuffer[indexSend++] = pModbusData->functionCode;
+ 508   1        txBuffer[indexSend++] = (u8)((pModbusData->startAddr >> 8) & 0xff);
+ 509   1        txBuffer[indexSend++] = (u8)(pModbusData->startAddr & 0xff);
+ 510   1        txBuffer[indexSend++] = (u8)((pModbusData->dataLen >> 8) & 0xff);
+ 511   1        txBuffer[indexSend++] = (u8)(pModbusData->dataLen & 0xff);
+ 512   1        validationCRC = CRC16(txBuffer, indexSend);
+ 513   1        txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 514   1        txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 515   1        UARTSendString(UART(1), txBuffer, indexSend);
+ 516   1        memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 517   1      }
+ 518          /**************************************
+ 519          //函数功能：对上位机06命令写单个寄存器处理
+ 520          //函数返回值：无
+ 521          //函数形参：无
+ 522          //时间：2020/06/22
+ 523          //备注：无
+ 524          *************************************/
+ 525          void WriteSingleReg(ModbusData *pModbusData)
+ 526          {
+ 527   1        u16 validationCRC = 0;
+ 528   1        u16 indexSend = 0;
+ 529   1        //  u16 regValue = 0;
+ 530   1        // u16 regAddr = 0;
+ 531   1      
+ 532   1        // regAddr = pModbusData->startAddr;
+ 533   1      
+ 534   1        //从设备地址不可为0
+ 535   1        if (pModbusData->dat[0] < 0x0000 || pModbusData->dat[0] > 0xFFFF || ((pModbusData->startAddr == LOCALADDR
+             -REG) && (pModbusData->dat[0] == 0)))
+ 536   1        {
+ 537   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_VALUE);
+ 538   2          return;
+ 539   2        }
+ 540   1      
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 10  
+
+ 541   1        if ((pModbusData->startAddr < CHNxReg(0) || pModbusData->startAddr > CHNxReg(MAXAD7124CHNS)) && (pModbusD
+             -ata->startAddr != LOCALADDRREG))
+ 542   1        {
+ 543   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 544   2          return;
+ 545   2        }
+ 546   1      
+ 547   1        //业务处理
+ 548   1        WriteRegData(pModbusData->startAddr, pModbusData->dat[0], WriteSinReg);
+ 549   1        if (pModbusData->dat[0] == GetRegData(pModbusData->startAddr, WriteSinReg))
+ 550   1        {
+ 551   2          txBuffer[indexSend++] = pModbusData->addr;
+ 552   2          txBuffer[indexSend++] = pModbusData->functionCode;
+ 553   2          txBuffer[indexSend++] = (u8)((pModbusData->startAddr >> 8) & 0xff);
+ 554   2          txBuffer[indexSend++] = (u8)(pModbusData->startAddr & 0xff);
+ 555   2          txBuffer[indexSend++] = (u8)((pModbusData->dat[0] >> 8) & 0xff);
+ 556   2          txBuffer[indexSend++] = (u8)(pModbusData->dat[0] & 0xff);
+ 557   2          validationCRC = CRC16(txBuffer, indexSend);
+ 558   2          txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 559   2          txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 560   2          UARTSendString(UART(1), txBuffer, indexSend);
+ 561   2          memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 562   2        }
+ 563   1        else
+ 564   1        {
+ 565   2          ErrorSend(pModbusData->functionCode, IS_SLAVE_FAILURE);
+ 566   2          return;
+ 567   2        }
+ 568   1      }
+ 569          
+ 570          void WriteMuilRegs(ModbusData *pModbusData)
+ 571          {
+ 572   1        u16 validationCRC = 0;
+ 573   1        u16 regValue = 0;
+ 574   1        u16 regAddr = 0;
+ 575   1        u8 i, j = 0;
+ 576   1        u8 writeFlag = 0;
+ 577   1        u8 indexSend = 0;
+ 578   1      
+ 579   1        regAddr = pModbusData->startAddr;
+ 580   1        if (pModbusData->dataLen < 0x0001 || pModbusData->dataLen > 0x007B || pModbusData->nBytes != pModbusData-
+             ->dataLen << 1)
+ 581   1        {
+ 582   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_VALUE);
+ 583   2          return;
+ 584   2        }
+ 585   1        if (regAddr < InputRegx(0) || regAddr > InputRegx(MAXINPUTREGNUM) || regAddr + pModbusData->dataLen > Inp
+             -utRegx(MAXINPUTREGNUM))
+ 586   1        {
+ 587   2          ErrorSend(pModbusData->functionCode, IS_INVALID_DATA_ADDR);
+ 588   2          return;
+ 589   2        }
+ 590   1        //业务处理
+ 591   1        for (i = 1; i <= pModbusData->dataLen; i++)
+ 592   1        {
+ 593   2      
+ 594   2          regValue = pModbusData->dat[i];
+ 595   2          WriteRegData(regAddr, regValue, WriteMulRegs);
+ 596   2          if (regValue == GetRegData(regAddr, WriteMulRegs))
+ 597   2          {
+ 598   3            writeFlag += 1;
+ 599   3          }
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 11  
+
+ 600   2          regAddr++;
+ 601   2        }
+ 602   1        if (writeFlag == pModbusData->dataLen)
+ 603   1        {
+ 604   2          txBuffer[indexSend++] = pModbusData->addr;
+ 605   2          txBuffer[indexSend++] = pModbusData->functionCode;
+ 606   2          txBuffer[indexSend++] = (u8)((pModbusData->startAddr >> 8) & 0xff);
+ 607   2          txBuffer[indexSend++] = (u8)(pModbusData->startAddr & 0xff);
+ 608   2          txBuffer[indexSend++] = (u8)((pModbusData->dataLen >> 8) & 0xff);
+ 609   2          txBuffer[indexSend++] = (u8)(pModbusData->dataLen & 0xff);
+ 610   2          validationCRC = CRC16(txBuffer, indexSend);
+ 611   2          txBuffer[indexSend++] = (u8)((validationCRC >> 8) & 0xff);
+ 612   2          txBuffer[indexSend++] = (u8)(validationCRC & 0xff);
+ 613   2          UARTSendString(UART(1), txBuffer, indexSend);
+ 614   2          memset(txBuffer, 0, MAXMODBUS_TX_DATALENGTH);
+ 615   2        }
+ 616   1        else
+ 617   1        {
+ 618   2          ErrorSend(pModbusData->functionCode, IS_SLAVE_FAILURE);
+ 619   2          return;
+ 620   2        }
+ 621   1      }
+ 622          
+ 623          u8 GetCoilData(u16 coilAddr, u8 functionCode)
+ 624          {
+ 625   1        switch (functionCode)
+ 626   1        {
+ 627   2        case ReadCoilSta:
+ 628   2        case ReadInputDis:
+ 629   2          return coilValues[coilAddr];
+ 630   2        default:
+ 631   2          break;
+ 632   2        }
+ 633   1        return 0;
+ 634   1      }
+ 635          
+ 636          void SetCoilData(u16 coilAddr, u8 coilValue, u8 functionCode)
+ 637          {
+ 638   1        switch (functionCode)
+ 639   1        {
+ 640   2        case WriteSinReg:
+ 641   2        case ForceMulCoils:
+ 642   2          coilValues[coilAddr] = coilValue;
+ 643   2        default:
+ 644   2          break;
+ 645   2        }
+ 646   1      }
+ 647          void WriteRegData(u16 regAddr, u16 regValue, u8 functionCode)
+ 648          {
+ 649   1        switch (functionCode)
+ 650   1        {
+ 651   2        case WriteSinReg:
+ 652   2        case WriteMulRegs:
+ 653   2          if (regAddr == LOCALADDRREG)
+ 654   2          {
+ 655   3            localAddr = (u8)regValue;
+ 656   3          }
+ 657   2          else
+ 658   2          {
+ 659   3            inputRegValues[regAddr] = regValue;
+ 660   3          }
+ 661   2          break;
+C51 COMPILER V9.54   MODBUS                                                                03/12/2022 18:23:30 PAGE 12  
+
+ 662   2        default:
+ 663   2          break;
+ 664   2        }
+ 665   1      }
+ 666          
+ 667          u16 GetRegData(u16 regAddr, u8 functionCode)
+ 668          {
+ 669   1        u16 regValue = 0;
+ 670   1        if (regAddr == LOCALADDRREG)
+ 671   1        {
+ 672   2          return (u8)localAddr;
+ 673   2        }
+ 674   1        switch (functionCode)
+ 675   1        {
+ 676   2        case ReadHoldReg:
+ 677   2          regValue = chnValues[(u8)(regAddr)];
+ 678   2          break;
+ 679   2        case ReadInputReg:
+ 680   2          regValue = inputRegValues[(u8)(regAddr)];
+ 681   2          break;
+ 682   2        case WriteSinReg:
+ 683   2        case WriteMulRegs:
+ 684   2          regValue = inputRegValues[regAddr];
+ 685   2          break;
+ 686   2        default:
+ 687   2          break;
+ 688   2        }
+ 689   1        // regValue = *(volatile u16 *)regAddr;
+ 690   1        return regValue;
+ 691   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   9964    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   1180    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

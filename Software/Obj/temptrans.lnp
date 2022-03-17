@@ -1,0 +1,14 @@
+"..\Obj\main.obj",
+"..\Obj\KalmanFilter.obj",
+"..\Obj\fifoqueue.obj",
+"..\Obj\modbus.obj",
+"..\Obj\crc.obj",
+"..\Obj\GPIO.obj",
+"..\Obj\UART.obj",
+"..\Obj\SPI.obj",
+"..\Obj\timer.obj",
+"..\Obj\ADC.obj",
+"..\Obj\AD7124_8.obj",
+"..\Obj\delay.obj" 
+TO "..\Obj\temptrans" 
+PRINT(".\Listings\temptrans.m51") RAMSIZE(256) 
