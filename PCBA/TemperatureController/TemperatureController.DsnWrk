@@ -2,5 +2,3 @@
 Version=1.0
 [Project1]
 ProjectPath=TemperatureController.PrjPcb
-[Project2]
-ProjectPath=..\..\..\工程中删除的文件\TemperatureController\PCBA\TemperatureController\TemperatureController.PrjPcb
