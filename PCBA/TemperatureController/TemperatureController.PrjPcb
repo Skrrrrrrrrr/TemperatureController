@@ -39,7 +39,7 @@ PrefsRevisionGUID=
 
 [Document1]
 DocumentPath=mcu.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=201
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -56,7 +56,7 @@ DocumentUniqueId=GYLAIDQL
 
 [Document2]
 DocumentPath=power.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=301
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -73,7 +73,7 @@ DocumentUniqueId=THIGFLBG
 
 [Document3]
 DocumentPath=rs485.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=401
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -90,7 +90,7 @@ DocumentUniqueId=CGDYWTAF
 
 [Document4]
 DocumentPath=hmi.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=501
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -107,7 +107,7 @@ DocumentUniqueId=DCMGCSMY
 
 [Document5]
 DocumentPath=viout.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=601
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -141,7 +141,7 @@ DocumentUniqueId=RAXJGXLC
 
 [Document7]
 DocumentPath=adc.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=701
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
@@ -158,7 +158,7 @@ DocumentUniqueId=QLWFACDK
 
 [Document8]
 DocumentPath=senseinterface.SchDoc
-AnnotationEnabled=1
+AnnotationEnabled=0
 AnnotateStartValue=801
 AnnotationIndexControlEnabled=1
 AnnotateSuffix=
