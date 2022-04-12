@@ -208,23 +208,6 @@ GenerateClassCluster=0
 DocumentUniqueId=FMPCQBFH
 
 [Document11]
-DocumentPath=MMYWareHouse.PcbLib
-AnnotationEnabled=1
-AnnotateStartValue=1
-AnnotationIndexControlEnabled=0
-AnnotateSuffix=
-AnnotateScope=All
-AnnotateOrder=-1
-DoLibraryUpdate=1
-DoDatabaseUpdate=1
-ClassGenCCAutoEnabled=1
-ClassGenCCAutoRoomEnabled=1
-ClassGenNCAutoScope=None
-DItemRevisionGUID=
-GenerateClassCluster=0
-DocumentUniqueId=TCAQAORR
-
-[Document12]
 DocumentPath=TemperatureController(betaV1.0).PcbLib
 AnnotationEnabled=1
 AnnotateStartValue=1
@@ -241,7 +224,7 @@ DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=LNQBLSGU
 
-[Document13]
+[Document12]
 DocumentPath=TempdevAmmy.PcbDoc
 AnnotationEnabled=1
 AnnotateStartValue=1
@@ -257,6 +240,23 @@ ClassGenNCAutoScope=None
 DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=FAHVCBLN
+
+[Document13]
+DocumentPath=mmyLibrary.PcbLib
+AnnotationEnabled=1
+AnnotateStartValue=1
+AnnotationIndexControlEnabled=0
+AnnotateSuffix=
+AnnotateScope=All
+AnnotateOrder=-1
+DoLibraryUpdate=1
+DoDatabaseUpdate=1
+ClassGenCCAutoEnabled=1
+ClassGenCCAutoRoomEnabled=1
+ClassGenNCAutoScope=None
+DItemRevisionGUID=
+GenerateClassCluster=0
+DocumentUniqueId=LBBYNSVB
 
 [Configuration1]
 Name=Sources
