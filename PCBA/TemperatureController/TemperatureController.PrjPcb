@@ -106,23 +106,6 @@ GenerateClassCluster=0
 DocumentUniqueId=DCMGCSMY
 
 [Document5]
-DocumentPath=viout.SchDoc
-AnnotationEnabled=0
-AnnotateStartValue=601
-AnnotationIndexControlEnabled=1
-AnnotateSuffix=
-AnnotateScope=All
-AnnotateOrder=9
-DoLibraryUpdate=1
-DoDatabaseUpdate=1
-ClassGenCCAutoEnabled=1
-ClassGenCCAutoRoomEnabled=1
-ClassGenNCAutoScope=None
-DItemRevisionGUID=
-GenerateClassCluster=0
-DocumentUniqueId=FXNCASNW
-
-[Document6]
 DocumentPath=homepage.SchDoc
 AnnotationEnabled=0
 AnnotateStartValue=101
@@ -139,7 +122,7 @@ DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=RAXJGXLC
 
-[Document7]
+[Document6]
 DocumentPath=adc.SchDoc
 AnnotationEnabled=0
 AnnotateStartValue=701
@@ -155,6 +138,23 @@ ClassGenNCAutoScope=None
 DItemRevisionGUID=
 GenerateClassCluster=0
 DocumentUniqueId=QLWFACDK
+
+[Document7]
+DocumentPath=viout.SchDoc
+AnnotationEnabled=0
+AnnotateStartValue=601
+AnnotationIndexControlEnabled=1
+AnnotateSuffix=
+AnnotateScope=All
+AnnotateOrder=9
+DoLibraryUpdate=1
+DoDatabaseUpdate=1
+ClassGenCCAutoEnabled=1
+ClassGenCCAutoRoomEnabled=1
+ClassGenNCAutoScope=None
+DItemRevisionGUID=
+GenerateClassCluster=0
+DocumentUniqueId=FXNCASNW
 
 [Document8]
 DocumentPath=TemperatureController.Annotation
