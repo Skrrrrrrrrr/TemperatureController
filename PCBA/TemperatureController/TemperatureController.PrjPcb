@@ -225,23 +225,6 @@ GenerateClassCluster=0
 DocumentUniqueId=KASJDXIB
 
 [Document12]
-DocumentPath=TempdevAmmy0824.PcbDoc
-AnnotationEnabled=1
-AnnotateStartValue=1
-AnnotationIndexControlEnabled=0
-AnnotateSuffix=
-AnnotateScope=All
-AnnotateOrder=-1
-DoLibraryUpdate=1
-DoDatabaseUpdate=1
-ClassGenCCAutoEnabled=1
-ClassGenCCAutoRoomEnabled=1
-ClassGenNCAutoScope=None
-DItemRevisionGUID=
-GenerateClassCluster=0
-DocumentUniqueId=XYJHVJXI
-
-[Document13]
 DocumentPath=Copy of TempdevAmmy0923.PcbDoc
 AnnotationEnabled=1
 AnnotateStartValue=1
